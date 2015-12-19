@@ -57,14 +57,36 @@ end
 
 to go  ;; forever button
 
-  ask workers
-  [
-    check-goal         ;; when we reach our goal, set a new goal
-
-    if (count (turtles-on (patch-ahead 1)) < max-turtles-per-square) [
+  if group-14-slow-in-mud
+  [ ask workers with [home-building = 14]
+     [
+       check-goal         ;; when we reach our goal, set a new goal
+;;    if (count (turtles-on (patch-ahead 1)) < max-turtles-per-square) [
        move-worker self
-    ]
+;;    ]
+     ]
   ]
+
+  if group-18-tired-in-mud
+  [ ask workers with [home-building = 18]
+     [
+       check-goal         ;; when we reach our goal, set a new goal
+;;    if (count (turtles-on (patch-ahead 1)) < max-turtles-per-square) [
+       move-worker self
+;;    ]
+     ]
+  ]
+
+  if group-15-faces-danger
+  [ ask workers with [home-building = 15]
+     [
+       check-goal         ;; when we reach our goal, set a new goal
+;;    if (count (turtles-on (patch-ahead 1)) < max-turtles-per-square) [
+       move-worker self
+;;    ]
+     ]
+  ]
+
 
   tick
   if ticks > total-ticks
@@ -76,7 +98,7 @@ end
 
 to write-results
   ;; start with column headers
-  let myheaders ["building number" "x" "y" "width" "height" "number of avoiders" "number of bold workers" "average trips for avoiders" "average trips for bold" "average ticks mudders get tired"]
+  let myheaders ["building number" "x" "y" "width" "height" "number of avoiders" "number of bold workers" "average trips for avoiders" "average trips for bold" "average time per trip avoiders" "average time per trip bold" "average ticks mudders get tired"]
   let myout (list myheaders)
 
 
@@ -102,13 +124,15 @@ to-report building-stats [building-num]
     let bold count turtles with [avoid-mud? = 0 and home-building = building-num]
     let avoiders-trips  mean [trips-completed] of  turtles with [avoid-mud? = 1 and home-building = building-num]
     let bold-trips  mean [trips-completed] of  turtles with [avoid-mud? = 0 and home-building = building-num]
+    let avoiders-triptime total-ticks / avoiders-trips
+    let bold-triptime  total-ticks / bold-trips
 
     let napper-trips 0
 ;;    if groupnum = 2 [
        set napper-trips mean  [no-energy-tick] of workers with [no-energy-tick > 0]
 ;;    ]
 
-    report (list building-num bx1 by1 bwid blen avoiders bold avoiders-trips bold-trips napper-trips)
+    report (list building-num bx1 by1 bwid blen avoiders bold avoiders-trips bold-trips avoiders-triptime bold-triptime napper-trips)
 end
 
 to add-blocks
@@ -154,6 +178,23 @@ to move-building
          let y2   mouse-ycor + temp-building-height
          construct-hovel building-to-move mouse-xcor mouse-ycor x2 y2
 
+
+         ;; before execution, move workers to their building.  If already executing, reset their directions.
+         ifelse ticks = 0 [
+           ask workers with [home-building = building-to-move][
+              move-to one-of patches with [building-number = building-to-move]
+           ]
+         ][
+            redirect-workers
+         ]
+         stop
+       ]
+  ]
+
+end
+
+;; used if a building moves after "go" is pressed.
+to redirect-workers
          ;; some workers were heading to this building, redirect them to the new destination
          ask workers with [destination-building = building-to-move and searching? = true][
            set-new-destination destination-building searching? 0
@@ -161,10 +202,6 @@ to move-building
          ask workers with [home-building = building-to-move and searching? = false][
            set-new-destination home-building searching? 0
          ]
-         stop
-       ]
-  ]
-
 end
 
 ;; create people
@@ -313,7 +350,7 @@ to set-direction [little-dude]
   let shuffles 0                               ;; a fail-safe, so that a trapped person doesn't stand there twirling
   let allowedpatches [allowed-patches] of little-dude
 
-  while [counter < steps-to-check and totalangle < 120]
+  while [counter < steps-to-check and totalangle < 120 and hugging-edges-steps < 1]
   [
 
 
@@ -361,7 +398,10 @@ to set-direction [little-dude]
       ;; if (who = 658) [
       ;;    show "desperation time"
       ;;  ]
-      set hugging-edges-steps 1
+      if (hugging-edges-steps < 1) [
+         set hugging-edges-steps 10
+         ifelse (goingright = true) [ right 60 ][ left 60 ]
+      ]
 
       ask little-dude [
          set heading  currentheading
@@ -372,7 +412,7 @@ to set-direction [little-dude]
       ;; a problem with edge creeping is that all of the workers are in a single trail, not using the width of the path
 
       ;; first, turn towards the item we are going around  (it is like keeping a hand on the wall)
-      ifelse (goingright = true) [ left 45 ][ right 45 ]
+      ;;ifelse (goingright = true) [ left 45 ][ right 45 ]
 
       ;; creep the edge.  If you can't step forward, look right.  Only look one step ahead; eventually we will creep out to open space.
       let nextpatch [pcolor] of patch-ahead 1
@@ -721,15 +761,48 @@ total-ticks
 Number
 
 INPUTBOX
-10
-271
-165
-331
+11
+249
+166
+309
 chance-of-injury-percent
 7
 1
 0
 Number
+
+SWITCH
+12
+365
+173
+398
+group-14-slow-in-mud
+group-14-slow-in-mud
+0
+1
+-1000
+
+SWITCH
+12
+396
+173
+429
+group-18-tired-in-mud
+group-18-tired-in-mud
+0
+1
+-1000
+
+SWITCH
+12
+428
+173
+461
+group-15-faces-danger
+group-15-faces-danger
+0
+1
+-1000
 
 MONITOR
 950
@@ -824,15 +897,15 @@ NIL
 1
 
 SLIDER
-9
-339
-193
-372
+10
+315
+194
+348
 max-turtles-per-square
 max-turtles-per-square
 1
 10
-5
+9
 1
 1
 dudes

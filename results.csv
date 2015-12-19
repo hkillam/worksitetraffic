@@ -1,0 +1,4 @@
+building number,x,y,width,height,number of avoiders,number of bold workers,average trips for avoiders,average trips for bold,average time per trip avoiders,average time per trip bold,average ticks mudders get tired
+14,34,115,25,15,202,173,9,3.994219653179191,0.0045,0.0019971098265895953,1254.6
+18,120,60,20,10,73,77,9,7,0.0045,0.0035,1254.6
+15,73,160,14,20,25,136,6.04,15.132352941176471,0.00302,0.007566176470588236,1254.6
