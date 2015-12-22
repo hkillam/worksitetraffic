@@ -12,6 +12,7 @@ globals [
   clr-void
   building-list
   mouse-was-down?
+
 ]
 
 
@@ -38,6 +39,7 @@ workers-own [
   no-energy-tick        ;; the tick count when this worker runs out of energy (group 2 - tired in mud)
   go-right?             ;; true if this turtle looks to the right for an open route.  set this when the goal is set
   hugging-edges-steps   ;; if the turtle starts hugging the edge, this is how many more steps to do it for
+  blue-sky-steps        ;; if we are wandering in open spaces, take a few steps before re-calculating
 ]
 
 
@@ -105,7 +107,6 @@ to write-results
   foreach building-list [
     let buildnum  item 0 ?
     if buildnum != "facility" [
-      show buildnum
       let mystats building-stats  buildnum
       set myout lput mystats myout
     ]
@@ -219,6 +220,7 @@ to set-new-destination [new-dest new-searching add-trip ]
       set previous-patch patch 0 0
       set dice-tossed? 0
       set hugging-edges-steps 0
+      set blue-sky-steps 0
 
       ;; tell turtle which direction it will need to turn to go away from the center
       let centerheading towardsxy 105 105
@@ -334,69 +336,143 @@ to  make-buildings-from-list[  ]
   ]
 end
 
-to set-direction [little-dude]
-  ;; look directly to goal;  if no trouble within the next steps, go forward.  otherwise, look to the side a bit
+to-report possible-path-list [little-dude]
+    let path-list []
+    ;; set path-list lput (list dx dy) path-list
 
-  ;; let car-ahead one-of turtles-on patch-ahead 1
+    ;; we are already hugging an edge, keep doing that.
+    if hugging-edges-steps > 0 [
+      report path-list
+    ]
+
+
+
   let all-clear true
   let currentheading [heading] of little-dude
 
   ;; site the goal, adjust direction toward it.
   ;; unless we are hugging edges
-  if (hugging-edges-steps <= 0) [
-     set heading towards-nowrap goal
-  ]
+  set heading towards-nowrap goal
 
-  let counter 1
-  let steps-to-check random (14) + 10            ;; a little variety in how far ahead we look
+  no-display
+
+  let step-counter 1
+  let steps-to-check random (14) + 150            ;; a little variety in how far ahead we look
   let totalangle  0
   let goingright  [go-right?] of little-dude
-  let shuffles 0                               ;; a fail-safe, so that a trapped person doesn't stand there twirling
   let allowedpatches [allowed-patches] of little-dude
 
-  while [counter < steps-to-check and totalangle < 120 and hugging-edges-steps < 1]
+  while [step-counter < steps-to-check and totalangle < 120 and hugging-edges-steps < 1]
   [
 
-
-      ;; get out now if we are facing a clear path to the destination
-      if [building-number] of  patch-ahead counter  = [ destination-building ] of little-dude
+      ;; we are facing a clear path to the destination, only report this path
+      if [building-number] of  patch-ahead step-counter  = [ destination-building ] of little-dude
       [
         set hugging-edges-steps 0
-        stop
+        set path-list []  ;; throw out any other values
+        set path-list lput (list heading step-counter) path-list
+        set blue-sky-steps step-counter + 3
+        display
+        report path-list
       ]
 
       ;; what is the colour of the next patch in the path we are checking?
-      let nextpatch [pcolor] of patch-ahead counter
+      let nextpatch [pcolor] of patch-ahead step-counter
 
-      ;; if we cannot step on that patch, angle the path a little to go around
-      ifelse (not member? nextpatch  allowedpatches)
+      ;; see if we hit the end of the open path
+      if (not member? nextpatch  allowedpatches)
       [
 
-        let newangle random (5) + 3               ;; turn between 3 and 8 degrees
-        set totalangle (totalangle + newangle)  ;; increase the angle a little
-        if (who = 658) [
-          show newangle
+        ;; report the path
+        if step-counter > 1 [
+          set path-list lput (list heading step-counter) path-list
         ]
 
-
+        ;; and moving on
+        let newangle random (5) + 3               ;; turn between 3 and 8 degrees
+        set totalangle (totalangle + newangle)  ;; increase the angle a little
         ifelse (goingright = true) [
           right newangle
         ][
           left newangle
         ]
-
-        set counter 0
-        set shuffles shuffles + 1
-      ]
-      [
-
+        set step-counter 0
       ]
 
-      set counter counter + 1
+      set step-counter step-counter + 1
   ]
 
-  ;;  did we get stuck and give up?
-  ifelse (totalangle >= 120) [
+  ;; path ahead is clear for a while, and we fell out of the loop, so this is the only path we need to consider
+  if step-counter > 0 and length path-list = 0 [
+    set path-list lput (list heading step-counter) path-list
+  ]
+
+
+  display
+  set heading currentheading
+  report path-list
+end
+
+
+to face-longest-path [little-dude path-list]
+
+    ;; we are already hugging an edge, keep doing that.
+    if hugging-edges-steps > 0 [
+      stop
+    ]
+
+    ;; check for no open path, and start hugging edges
+    if length path-list = 0 [
+       set hugging-edges-steps 10;
+       set color red;
+       stop
+    ]
+
+    ;;no-display
+
+    ;; look for the longest path, grab that angle
+    let myheading  0
+    let step-count  0
+    foreach path-list [
+      if  item 1 ? > step-count [
+         set myheading  item 0 ?
+         set step-count  item 1 ?
+         if item 1 ? > 23 [
+           set blue-sky-steps 20
+
+         ]
+      ]
+    ]
+
+    ;;display
+
+    ;; turn to the longest path
+    set heading myheading
+
+
+end
+
+
+
+to set-direction [little-dude]
+  ;; look directly to goal;  if no trouble within the next steps, go forward.  otherwise, look to the side a bit
+
+  let all-clear true
+  let currentheading [heading] of little-dude
+
+  ;; we are not hugging an edge, check around for a good path.
+  if hugging-edges-steps < 1 [
+      ifelse blue-sky-steps < 1 [
+         let mypaths possible-path-list little-dude
+         face-longest-path little-dude mypaths
+      ][
+         set blue-sky-steps  blue-sky-steps - 1  ;; stay on the current course for a few steps
+      ]
+  ]
+
+
+  ;;  should we try hugging and edge and following it out of this dead end?
+  if (hugging-edges-steps > 0) [
 
       ;; testing - change this who number to follow one dude
       ;; if (who = 658) [
@@ -404,7 +480,7 @@ to set-direction [little-dude]
       ;;  ]
       if (hugging-edges-steps < 1) [
          set hugging-edges-steps 10
-         ifelse (goingright = true) [ right 60 ][ left 60 ]
+         ifelse (go-right? = true) [ right 60 ][ left 60 ]
       ]
 
       ask little-dude [
@@ -416,35 +492,32 @@ to set-direction [little-dude]
       ;; a problem with edge creeping is that all of the workers are in a single trail, not using the width of the path
 
       ;; first, turn towards the item we are going around  (it is like keeping a hand on the wall)
-      ;;ifelse (goingright = true) [ left 45 ][ right 45 ]
+      ;;ifelse (go-right? = true) [ left 45 ][ right 45 ]
 
       ;; creep the edge.  If you can't step forward, look right.  Only look one step ahead; eventually we will creep out to open space.
       let nextpatch [pcolor] of patch-ahead 1
-      set counter 0
-      while [not member? nextpatch  allowedpatches and counter < 10] [
-        ifelse (goingright = true) [
+      let step-counter 0
+      while [not member? nextpatch  allowed-patches and step-counter < 10] [
+        ifelse (go-right? = true) [
            right 45
         ][
            left 45
         ]
         set nextpatch [pcolor] of patch-ahead 1
-        set counter counter + 1
+        set step-counter step-counter + 1
       ]
 
-        set hugging-edges-steps hugging-edges-steps - 1
+      set hugging-edges-steps hugging-edges-steps - 1
 
       ;; this guy is totally trapped, just give up.
-      if (counter = 10) [
+      if (step-counter = 10) [
         set color black
+        set pcolor green
+        show (word "trapped worker: " who)
         die
       ]
 
-  ][
-     ;; we have a clear path...  is our edge hugger around the obsticle?  or doubling back?
-     set hugging-edges-steps hugging-edges-steps - 1
   ]
-
-  ;; we know our next step
 
 end
 
@@ -527,7 +600,6 @@ to setup-workers
 
       ;; currently, this only works for two destinations.  need to loop for more than two
       ifelse (member? "," (word dest)) [
-        show "two destinations"
         let comma position "," dest
         let desta read-from-string substring dest 0 comma
         let destb read-from-string substring dest (comma + 1) (length dest)
@@ -574,6 +646,7 @@ to init-worker [  colorA colorB dest-buildings home-plate]
       set no-energy-tick 0
 
       set-new-destination dest 1 0
+      set blue-sky-steps 0
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
