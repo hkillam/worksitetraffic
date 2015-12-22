@@ -112,6 +112,8 @@ to write-results
   ]
   csv:to-file "results.csv" myout
 
+  bitmap:export bitmap:from-view "alteredbitmap.bmp"
+
 end
 
 to-report building-stats [building-num]
@@ -124,8 +126,10 @@ to-report building-stats [building-num]
     let bold count turtles with [avoid-mud? = 0 and home-building = building-num]
     let avoiders-trips  mean [trips-completed] of  turtles with [avoid-mud? = 1 and home-building = building-num]
     let bold-trips  mean [trips-completed] of  turtles with [avoid-mud? = 0 and home-building = building-num]
-    let avoiders-triptime total-ticks / avoiders-trips
-    let bold-triptime  total-ticks / bold-trips
+    let avoiders-triptime 0
+    if avoiders-trips > 0 [ set avoiders-triptime total-ticks / avoiders-trips ]
+    let bold-triptime 0
+    if bold-trips > 0 [ set bold-triptime  total-ticks / bold-trips]
 
     let napper-trips 0
 ;;    if groupnum = 2 [
@@ -651,7 +655,7 @@ CHOOSER
 new-path-type
 new-path-type
 "mud" "path" "danger"
-0
+1
 
 BUTTON
 118

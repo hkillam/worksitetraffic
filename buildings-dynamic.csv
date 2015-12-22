@@ -1,0 +1,13 @@
+facility,name,width,height,num workers,dest,min time,max time
+14,long term laydown,25,15,375,18,5,7
+18,rebar yard,20,10,150,14,1,12
+15,scaffold storage,14,20,280,"14,18",6,6
+position,,,,,,,
+facility,position,x,y,related facility,priority,,
+14,fixed,34,115,,,,
+18,far,,,14,0.6,,
+18,near,,,15,0.2,,
+15,near,,,18,0.4,,
+15,far,,,14,0.6,,
+18,no mud,,,,0.2,,
+18,max trips,,,15,0.3,,
