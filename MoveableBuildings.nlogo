@@ -1,4 +1,5 @@
 extensions [csv  bitmap]
+__includes ["worldview.nls"]
 
 
 globals [
@@ -18,12 +19,7 @@ globals [
 
 breed [ workers ]
 
-patches-own [
-  footprints           ;; amount of footprints on this patch - good paths get walked on more, people move toward them.
-  building-number   ;; number (14, 15, or 16) to identify the material sources
-  building-width    ;;
-  building-height   ;;  for moving and rebuilding.
-]
+
 
 workers-own [
   searching?            ;; 1 if going to the materials, 0 if returning\
@@ -40,6 +36,9 @@ workers-own [
   go-right?             ;; true if this turtle looks to the right for an open route.  set this when the goal is set
   hugging-edges-steps   ;; if the turtle starts hugging the edge, this is how many more steps to do it for
   blue-sky-steps        ;; if we are wandering in open spaces, take a few steps before re-calculating
+  slow-in-mud?          ;; from the input file - how is the worker affected by mud
+  tired-in-mud?         ;; from the input file - how is the worker affected by mud
+  risk-danger?          ;; from the input file - how is the worker affected by mud
 ]
 
 
@@ -60,32 +59,30 @@ end
 to go  ;; forever button
 
   if group-14-slow-in-mud
-  [ ask workers with [home-building = 14]
+  [
+    ask workers with [slow-in-mud? = 1]
      [
        check-goal         ;; when we reach our goal, set a new goal
-;;    if (count (turtles-on (patch-ahead 1)) < max-turtles-per-square) [
        move-worker self
-;;    ]
      ]
   ]
 
   if group-18-tired-in-mud
-  [ ask workers with [home-building = 18]
+  [
+    ask workers with [tired-in-mud? = 1]
      [
        check-goal         ;; when we reach our goal, set a new goal
-;;    if (count (turtles-on (patch-ahead 1)) < max-turtles-per-square) [
        move-worker self
-;;    ]
      ]
   ]
 
   if group-15-faces-danger
-  [ ask workers with [home-building = 15]
+  [
+
+    ask workers with [risk-danger? = 1]
      [
        check-goal         ;; when we reach our goal, set a new goal
-;;    if (count (turtles-on (patch-ahead 1)) < max-turtles-per-square) [
        move-worker self
-;;    ]
      ]
   ]
 
@@ -140,22 +137,7 @@ to-report building-stats [building-num]
     report (list building-num bx1 by1 bwid blen avoiders bold avoiders-trips bold-trips avoiders-triptime bold-triptime napper-trips)
 end
 
-to add-blocks
-  every .1
-   [ if mouse-down?
-     [ ask patch mouse-xcor mouse-ycor [
-       ask patches in-radius 5 [
-         if new-path-type = "mud"
-            [ set pcolor clr-mud ]
-         if new-path-type = "path"
-            [ set pcolor clr-path ]
-         if new-path-type = "danger"
-            [ set pcolor clr-danger ]
-        ]
-     ]
-     ]
-   ]
-end
+
 
 to-report mouse-clicked?
   report (mouse-was-down? = true and not mouse-down?)
@@ -250,74 +232,6 @@ to construct-hovel [building-num x1 y1 x2 y2]
   ]
 end
 
-
-to setup-patches [mapfile colorfile]
-
-  ;; default colours
-  set clr-path 39   ; beige
-  set clr-road 37   ; med brown
-  set clr-mud 35    ; light brown
-  set clr-danger 27 ; oranage
-  set clr-moveable-facility 55  ;green
-  set clr-fixed-facility 122 ; dark purple
-  set clr-fixed-facility2 124 ; lighter purple
-  set clr-void  0    ;  black, out of the map
-
-  ;; read colourfile
-  file-open colorfile
-  let  labels csv:from-row file-read-line
-  while [ not file-at-end? ] [
-    let row csv:from-row file-read-line
-    let clrpatch item 0 row
-    let clrnum item 1 row
-    let clrrgb item 2 row
-    let clrname item 3 row
-    if (clrpatch = "clr-path") [ set clr-path  clrnum ]
-    if (clrpatch = "clr-road") [ set clr-road  clrnum ]
-    if (clrpatch = "clr-mud") [ set clr-mud  clrnum ]
-    if (clrpatch = "clr-danger") [ set clr-danger  clrnum ]
-    if (clrpatch = "clr-moveable-facility") [ set clr-moveable-facility  clrnum ]
-    if (clrpatch = "clr-fixed-facility") [ set clr-fixed-facility  clrnum ]
-    if (clrpatch = "clr-fixed-facility2") [ set clr-fixed-facility2  clrnum ]
-    if (clrpatch = "clr-void") [ set clr-void  clrnum ]
-  ]
-  file-close
-
-
-  ;; read image
-  let mapcolors (list clr-path clr-road clr-mud clr-danger clr-moveable-facility clr-fixed-facility clr-fixed-facility2 clr-void)
-  bitmap:copy-to-pcolors (bitmap:import mapfile) true
-
-  ;; adjust patch colours to match our list
-  let extracolors (list -1)
-  ask patches
-  [
-    set building-number 0
-    set pcolor round pcolor   ;; adjust the fuzzy patches
-
-    ;; find all the colours that are not one of our scheme, and adjust them to fit.
-    if (not member? pcolor mapcolors) [
-      if (pcolor > 0 and pcolor <= 4) [ set pcolor clr-void ]
-      if (pcolor >= 5 and pcolor <= 9) [ set pcolor clr-path ]
-      if (pcolor >= 130 and pcolor <= 134) [ set pcolor clr-fixed-facility ]
-      if (pcolor >= 120 and pcolor <= 128 ) [ set pcolor clr-fixed-facility ]
-      if (pcolor >= 30 and pcolor <= 35 ) [ set pcolor clr-void ]
-      if (pcolor >= 36 and pcolor <= 36 ) [ set pcolor clr-mud ]   ;; not possible to sort road/mud here
-      if (pcolor >= 38 and pcolor <= 38 ) [ set pcolor clr-path ]
-      if (pcolor >= 26 and pcolor <= 29 ) [ set pcolor clr-danger ]
-      if (pcolor = 50 ) [ set pcolor clr-void ]
-      if (pcolor = 40 ) [ set pcolor clr-void ]
-      if (pcolor = 20 ) [ set pcolor clr-void ]
-      if (pcolor = 100 ) [ set pcolor clr-void ]
-      if (pcolor >= 17 and pcolor <= 19 ) [ set pcolor clr-path ]
-      if (not member? pcolor extracolors and not member? pcolor mapcolors) [
-         set extracolors lput pcolor extracolors  ;; did we miss any?
-      ]
-    ]
-  ]
-  ;;show extracolors
-
-end
 
 to  make-buildings-from-list[  ]
   foreach building-list [
@@ -534,41 +448,60 @@ to move-worker [little-dude]
          ]
 
          set-direction little-dude
+         let step-size 1
 
-         ;; building 14 - slow in mud, loses more energy in mud
-         if home-building = 14 [
-           ifelse pcolor = clr-mud or pcolor = clr-danger
-           [ forward .5
-             set energy energy - 1]
-          [ forward 1 ]
-           if energy <= 0
-           [  set color black ]
+         ;; check for sticky situations
+         if pcolor = clr-mud or pcolor = clr-danger
+         [
+            if slow-in-mud? = 1 [ set step-size .5 ]
+            if tired-in-mud? = 1 [set energy energy - 1]
+            if risk-danger? = 1 and pcolor = clr-danger and dice-tossed? = 0
+            [
+                if random 100 < chance-of-injury-percent
+                [ set color black
+                    set energy 0
+                ]
+                set dice-tossed? 1
+
+            ]
          ]
 
-         ;; building 18 - lose energy in mud
-         if home-building = 18 [
-           if pcolor = clr-mud or pcolor = clr-danger
-           [ set energy energy - 1 ]
-           ifelse energy <= 0
-           [  set color black
-             set no-energy-tick  ticks]  ;; nap time
-           [  forward 1 ]
-         ]
 
-         ;; building 15 - chance of injury in danger
-         if home-building = 15 [
-           if pcolor = clr-danger and dice-tossed? = 0
-           [
-             if random 100 < chance-of-injury-percent
-             [ set color black
-               set energy 0 ]
-             set dice-tossed? 1
+         ;; check for someone on that patch, step to the right (unless we are already hugging an edge)
+         if (count (turtles-on (patch-ahead 1)) >= max-turtles-per-square)
+         [
+           ;; patch-right-and-ahead angle distance
+           if (hugging-edges-steps < 1) [
+             let nextpatch [pcolor] of patch-right-and-ahead 45 1
+
+             ifelse ( member? nextpatch  allowed-patches and count (turtles-on (patch-right-and-ahead 45 1)) < max-turtles-per-square)
+             [
+               move-to patch-right-and-ahead 45 step-size
+               set blue-sky-steps 0
+
+             ]
+             [
+               set nextpatch [pcolor] of patch-right-and-ahead 90 1
+               if ( member? nextpatch  allowed-patches and count (turtles-on (patch-right-and-ahead 90 1)) < max-turtles-per-square)
+               [
+                 move-to patch-right-and-ahead 90 step-size
+                 set blue-sky-steps 0
+               ]
+             ]
            ]
-           if color != black
-           [  forward 1 ]
+           set energy energy - 1
+           stop
          ]
 
+
+         ;; everyone!
          set energy energy - 1
+         forward step-size
+         if energy < 1  [
+           set color black
+           set no-energy-tick  ticks
+           move-to patch 1 1
+         ]
 
     ]
 end
@@ -598,6 +531,11 @@ to setup-workers
       let numworkers  item 6 ?
       let dest item 7 ?
 
+      ;; how does mud/danger affect workers from this building?
+      let mud-slows item 8 ?
+      let mud-tires item 9 ?
+      let danger-harms item 10 ?
+
       ;; currently, this only works for two destinations.  need to loop for more than two
       ifelse (member? "," (word dest)) [
         let comma position "," dest
@@ -615,7 +553,7 @@ to setup-workers
         if (buildnum = 14) [ set color1 orange set color2 yellow ]
         if (buildnum = 18) [ set color1 95 set color2 85 ]
         if (buildnum = 15) [ set color1 115 set color2 125  ]
-        init-worker color1 color2 dest buildnum
+        init-worker color1 color2 dest buildnum mud-slows mud-tires danger-harms
       ]
     ]
   ]
@@ -626,7 +564,7 @@ end
 
 
 
-to init-worker [  colorA colorB dest-buildings home-plate]
+to init-worker [  colorA colorB dest-buildings home-plate mud-slows mud-tires danger-harms]
       let dest one-of dest-buildings
       set home-building home-plate
       set destination-building dest
@@ -640,13 +578,16 @@ to init-worker [  colorA colorB dest-buildings home-plate]
       set allowed-patches (list clr-path clr-road clr-moveable-facility blue)
       if avoid-mud? = 0  [  set allowed-patches lput clr-mud allowed-patches ]
       if avoid-mud? = 1  [  set color colorB ]
-      if avoid-mud? = 0 and home-plate = 14 [
+      if danger-harms = 1 and avoid-mud? = 0 [
         set allowed-patches lput clr-danger allowed-patches
       ]
       set no-energy-tick 0
 
       set-new-destination dest 1 0
       set blue-sky-steps 0
+      set slow-in-mud? mud-slows
+      set tired-in-mud? mud-tires
+      set risk-danger? danger-harms
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -982,7 +923,7 @@ max-turtles-per-square
 max-turtles-per-square
 1
 10
-9
+10
 1
 1
 dudes

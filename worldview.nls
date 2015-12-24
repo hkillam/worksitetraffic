@@ -1,0 +1,97 @@
+
+patches-own [
+  building-number   ;; number (14, 15, or 16) to identify the material sources
+  building-width    ;;
+  building-height   ;;  for moving and rebuilding.
+]
+
+to add-blocks
+  every .1
+   [ if mouse-down?
+     [ ask patch mouse-xcor mouse-ycor [
+       ask patches in-radius 3 [
+         if new-path-type = "mud"
+            [ set pcolor clr-mud ]
+         if new-path-type = "path"
+            [ set pcolor clr-path ]
+         if new-path-type = "danger"
+            [ set pcolor clr-danger ]
+        ]
+     ]
+     ]
+   ]
+end
+
+to read-color-file [ colorfile]
+
+
+  ;; default colours
+  set clr-path 39   ; beige
+  set clr-road 37   ; med brown
+  set clr-mud 35    ; light brown
+  set clr-danger 27 ; oranage
+  set clr-moveable-facility 55  ;green
+  set clr-fixed-facility 122 ; dark purple
+  set clr-fixed-facility2 124 ; lighter purple
+  set clr-void  0    ;  black, out of the map
+
+  ;; read colourfile
+  file-open colorfile
+  let  labels csv:from-row file-read-line
+  while [ not file-at-end? ] [
+    let row csv:from-row file-read-line
+    let clrpatch item 0 row
+    let clrnum item 1 row
+    let clrrgb item 2 row
+    let clrname item 3 row
+    if (clrpatch = "clr-path") [ set clr-path  clrnum ]
+    if (clrpatch = "clr-road") [ set clr-road  clrnum ]
+    if (clrpatch = "clr-mud") [ set clr-mud  clrnum ]
+    if (clrpatch = "clr-danger") [ set clr-danger  clrnum ]
+    if (clrpatch = "clr-moveable-facility") [ set clr-moveable-facility  clrnum ]
+    if (clrpatch = "clr-fixed-facility") [ set clr-fixed-facility  clrnum ]
+    if (clrpatch = "clr-fixed-facility2") [ set clr-fixed-facility2  clrnum ]
+    if (clrpatch = "clr-void") [ set clr-void  clrnum ]
+  ]
+  file-close
+end
+
+to setup-patches [mapfile colorfile]
+
+   read-color-file colorfile
+
+  ;; read image
+  let mapcolors (list clr-path clr-road clr-mud clr-danger clr-moveable-facility clr-fixed-facility clr-fixed-facility2 clr-void)
+  bitmap:copy-to-pcolors (bitmap:import mapfile) true
+
+  ;; adjust patch colours to match our list
+  let extracolors (list -1)
+  ask patches
+  [
+    set building-number 0
+    set pcolor round pcolor   ;; adjust the fuzzy patches
+
+    ;; find all the colours that are not one of our scheme, and adjust them to fit.
+    if (not member? pcolor mapcolors) [
+      if (pcolor > 0 and pcolor <= 4) [ set pcolor clr-void ]
+      if (pcolor >= 5 and pcolor <= 9) [ set pcolor clr-path ]
+      if (pcolor >= 130 and pcolor <= 134) [ set pcolor clr-fixed-facility ]
+      if (pcolor >= 120 and pcolor <= 128 ) [ set pcolor clr-fixed-facility ]
+      if (pcolor >= 30 and pcolor <= 35 ) [ set pcolor clr-void ]
+      if (pcolor >= 36 and pcolor <= 36 ) [ set pcolor clr-mud ]   ;; not possible to sort road/mud here
+      if (pcolor >= 38 and pcolor <= 38 ) [ set pcolor clr-path ]
+      if (pcolor >= 26 and pcolor <= 29 ) [ set pcolor clr-danger ]
+      if (pcolor = 50 ) [ set pcolor clr-void ]
+      if (pcolor = 40 ) [ set pcolor clr-void ]
+      if (pcolor = 20 ) [ set pcolor clr-void ]
+      if (pcolor = 100 ) [ set pcolor clr-void ]
+      if (pcolor >= 17 and pcolor <= 19 ) [ set pcolor clr-path ]
+      if (not member? pcolor extracolors and not member? pcolor mapcolors) [
+         set extracolors lput pcolor extracolors  ;; did we miss any?
+      ]
+    ]
+  ]
+  ;;show extracolors
+
+end
+
