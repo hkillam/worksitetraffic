@@ -1,5 +1,5 @@
 extensions [csv  bitmap]
-__includes ["worldview.nls"]
+__includes ["worldview.nls" "building-code.nls"]
 
 
 globals [
@@ -39,6 +39,7 @@ workers-own [
   slow-in-mud?          ;; from the input file - how is the worker affected by mud
   tired-in-mud?         ;; from the input file - how is the worker affected by mud
   risk-danger?          ;; from the input file - how is the worker affected by mud
+  working-ticks         ;; count down how long a worker stays in a work building
 ]
 
 
@@ -60,7 +61,7 @@ to go  ;; forever button
 
   if group-14-slow-in-mud
   [
-    ask workers with [slow-in-mud? = 1]
+    ask workers with [home-building = 14]
      [
        check-goal         ;; when we reach our goal, set a new goal
        move-worker self
@@ -69,7 +70,7 @@ to go  ;; forever button
 
   if group-18-tired-in-mud
   [
-    ask workers with [tired-in-mud? = 1]
+    ask workers with [home-building = 18]
      [
        check-goal         ;; when we reach our goal, set a new goal
        move-worker self
@@ -79,7 +80,7 @@ to go  ;; forever button
   if group-15-faces-danger
   [
 
-    ask workers with [risk-danger? = 1]
+    ask workers with [home-building = 15]
      [
        check-goal         ;; when we reach our goal, set a new goal
        move-worker self
@@ -88,6 +89,7 @@ to go  ;; forever button
 
 
   tick
+
   if ticks > total-ticks
   [ write-results
     stop
@@ -114,71 +116,9 @@ to write-results
 
 end
 
-to-report building-stats [building-num]
-    let bx1 min [pxcor] of patches with [building-number = building-num]
-    let by1 min [pycor] of patches with [building-number = building-num]
-    let bwid max [pxcor] of patches with [building-number = building-num] - bx1
-    let blen max [pycor] of patches with [building-number = building-num] - by1
-
-    let avoiders count turtles with [avoid-mud? = 1 and home-building = building-num]
-    let bold count turtles with [avoid-mud? = 0 and home-building = building-num]
-    let avoiders-trips  mean [trips-completed] of  turtles with [avoid-mud? = 1 and home-building = building-num]
-    let bold-trips  mean [trips-completed] of  turtles with [avoid-mud? = 0 and home-building = building-num]
-    let avoiders-triptime 0
-    if avoiders-trips > 0 [ set avoiders-triptime total-ticks / avoiders-trips ]
-    let bold-triptime 0
-    if bold-trips > 0 [ set bold-triptime  total-ticks / bold-trips]
-
-    let napper-trips 0
-;;    if groupnum = 2 [
-       set napper-trips mean  [no-energy-tick] of workers with [no-energy-tick > 0]
-;;    ]
-
-    report (list building-num bx1 by1 bwid blen avoiders bold avoiders-trips bold-trips avoiders-triptime bold-triptime napper-trips)
-end
 
 
 
-to-report mouse-clicked?
-  report (mouse-was-down? = true and not mouse-down?)
-end
-
-to move-building
-
-  if mouse-down?
-  [
-    without-interruption [
-         let temp-building-width 20
-         let temp-building-height 20
-
-         ;; grab the building size, and clear the old building
-         ask patches with [building-number = building-to-move] [
-           set pcolor  clr-path
-           set building-number  0
-           set temp-building-width  building-width
-           set temp-building-height building-height
-
-         ]
-
-         ;; create the new building
-         let x2  mouse-xcor + temp-building-width
-         let y2   mouse-ycor + temp-building-height
-         construct-hovel building-to-move mouse-xcor mouse-ycor x2 y2
-
-
-         ;; before execution, move workers to their building.  If already executing, reset their directions.
-         ifelse ticks = 0 [
-           ask workers with [home-building = building-to-move][
-              move-to one-of patches with [building-number = building-to-move]
-           ]
-         ][
-            redirect-workers
-         ]
-         stop
-       ]
-  ]
-
-end
 
 ;; used if a building moves after "go" is pressed.
 to redirect-workers
@@ -213,71 +153,32 @@ to set-new-destination [new-dest new-searching add-trip ]
       ]
 end
 
-to construct-hovel [building-num x1 y1 x2 y2]
-  without-interruption
-  [
-   ask patches with [pxcor >= x1 and pxcor <= x2 and  pycor >= y1 and pycor <= y2]
-   [
-     set pcolor  clr-moveable-facility
-     set building-number  building-num
-     set building-width x2 - x1
-     set building-height y2 - y1
-   ]
-
-  ask patches with [pxcor = x1 + 5 and pycor = y1 + 5]
-   [
-     set plabel-color black
-     set plabel building-num
-   ]
-  ]
-end
-
-
-to  make-buildings-from-list[  ]
-  foreach building-list [
-    let buildnum  item 0 ?
-    if buildnum != "facility" [
-      let buildname  item 1 ?
-      let x1  item 2 ?
-      let y1  item 3 ?
-      let width  item 4 ?
-      let height  item 5 ?
-      let x2  x1 + width
-      let y2  y1 + height
-
-      construct-hovel buildnum x1 y1 x2 y2
-    ]
-  ]
-end
-
 to-report possible-path-list [little-dude]
     let path-list []
     ;; set path-list lput (list dx dy) path-list
-
     ;; we are already hugging an edge, keep doing that.
     if hugging-edges-steps > 0 [
       report path-list
     ]
 
 
-
   let all-clear true
   let currentheading [heading] of little-dude
 
   ;; site the goal, adjust direction toward it.
-  ;; unless we are hugging edges
   set heading towards-nowrap goal
 
   no-display
 
   let step-counter 1
-  let steps-to-check random (14) + 150            ;; a little variety in how far ahead we look
+  let steps-to-check random (25) + 150            ;; a little variety in how far ahead we look
   let totalangle  0
   let goingright  [go-right?] of little-dude
   let allowedpatches [allowed-patches] of little-dude
 
-  while [step-counter < steps-to-check and totalangle < 120 and hugging-edges-steps < 1]
+  while [step-counter < steps-to-check and totalangle < 160]
   [
+
 
       ;; we are facing a clear path to the destination, only report this path
       if [building-number] of  patch-ahead step-counter  = [ destination-building ] of little-dude
@@ -345,7 +246,7 @@ to face-longest-path [little-dude path-list]
     ;;no-display
 
     ;; look for the longest path, grab that angle
-    let myheading  0
+    let myheading  heading
     let step-count  0
     foreach path-list [
       if  item 1 ? > step-count [
@@ -363,6 +264,15 @@ to face-longest-path [little-dude path-list]
     ;; turn to the longest path
     set heading myheading
 
+    if blue-sky-steps > 0 and avoid-mud? = 1 and 1 = 0 [
+    hatch 1 [
+      set size 0.01
+      pen-down fd blue-sky-steps
+      wait 1
+      pen-erase bk blue-sky-steps
+      die
+   ]]
+
 
 end
 
@@ -374,6 +284,15 @@ to set-direction [little-dude]
   let all-clear true
   let currentheading [heading] of little-dude
 
+  ;; sometimes the "blue sky" is wrong.
+  let nextpatch [pcolor] of patch-ahead 1
+  if not member? nextpatch  allowed-patches and  blue-sky-steps > 0 [
+    set blue-sky-steps 0
+    set hugging-edges-steps 10
+
+  ]
+
+
   ;; we are not hugging an edge, check around for a good path.
   if hugging-edges-steps < 1 [
       ifelse blue-sky-steps < 1 [
@@ -381,6 +300,7 @@ to set-direction [little-dude]
          face-longest-path little-dude mypaths
       ][
          set blue-sky-steps  blue-sky-steps - 1  ;; stay on the current course for a few steps
+
       ]
   ]
 
@@ -388,14 +308,6 @@ to set-direction [little-dude]
   ;;  should we try hugging and edge and following it out of this dead end?
   if (hugging-edges-steps > 0) [
 
-      ;; testing - change this who number to follow one dude
-      ;; if (who = 658) [
-      ;;    show "desperation time"
-      ;;  ]
-      if (hugging-edges-steps < 1) [
-         set hugging-edges-steps 10
-         ifelse (go-right? = true) [ right 60 ][ left 60 ]
-      ]
 
       ask little-dude [
          set heading  currentheading
@@ -409,7 +321,7 @@ to set-direction [little-dude]
       ;;ifelse (go-right? = true) [ left 45 ][ right 45 ]
 
       ;; creep the edge.  If you can't step forward, look right.  Only look one step ahead; eventually we will creep out to open space.
-      let nextpatch [pcolor] of patch-ahead 1
+      set nextpatch [pcolor] of patch-ahead 1
       let step-counter 0
       while [not member? nextpatch  allowed-patches and step-counter < 10] [
         ifelse (go-right? = true) [
@@ -439,6 +351,11 @@ end
 
 to move-worker [little-dude]
 
+    if working-ticks > 0 [
+      set working-ticks working-ticks - 1
+      stop
+    ]
+
     without-interruption
      [
 
@@ -450,9 +367,18 @@ to move-worker [little-dude]
          set-direction little-dude
          let step-size 1
 
+         let nextpatch [pcolor] of patch-ahead 1
+
+         if not member? nextpatch  allowed-patches [
+           set hugging-edges-steps 10
+           ;; show "course correction"
+           stop;
+         ]
+
          ;; check for sticky situations
          if pcolor = clr-mud or pcolor = clr-danger
          [
+            if avoid-mud? = 1 [ show "how did this guy get here?" ]
             if slow-in-mud? = 1 [ set step-size .5 ]
             if tired-in-mud? = 1 [set energy energy - 1]
             if risk-danger? = 1 and pcolor = clr-danger and dice-tossed? = 0
@@ -468,11 +394,11 @@ to move-worker [little-dude]
 
 
          ;; check for someone on that patch, step to the right (unless we are already hugging an edge)
-         if (count (turtles-on (patch-ahead 1)) >= max-turtles-per-square)
+         if (count (turtles-on (patch-ahead 1)) >= max-turtles-per-square and [pcolor] of patch-ahead 1 != clr-moveable-facility)
          [
            ;; patch-right-and-ahead angle distance
            if (hugging-edges-steps < 1) [
-             let nextpatch [pcolor] of patch-right-and-ahead 45 1
+             set nextpatch [pcolor] of patch-right-and-ahead 45 1
 
              ifelse ( member? nextpatch  allowed-patches and count (turtles-on (patch-right-and-ahead 45 1)) < max-turtles-per-square)
              [
@@ -512,6 +438,7 @@ to check-goal  ;; worker procedure - if they have reached the goal, set a new on
   ;; did we reach the destination?  return to home!
   if building-number = destination-building and searching? = 1 [
     set-new-destination  home-building 0 0
+    set working-ticks  (work-time destination-building)
   ]
 
   ;; did we reach the home?  go to destination
@@ -569,18 +496,26 @@ to init-worker [  colorA colorB dest-buildings home-plate mud-slows mud-tires da
       set home-building home-plate
       set destination-building dest
       set size 1
-      set color colorA
+      set color colorB
       set breed workers
       let mylist (list clr-path clr-road clr-moveable-facility)
       set trips-completed 0
       set energy total-ticks
       set avoid-mud? one-of [0 1]
       set allowed-patches (list clr-path clr-road clr-moveable-facility blue)
-      if avoid-mud? = 0  [  set allowed-patches lput clr-mud allowed-patches ]
-      if avoid-mud? = 1  [  set color colorB ]
-      if danger-harms = 1 and avoid-mud? = 0 [
-        set allowed-patches lput clr-danger allowed-patches
+      if avoid-mud? = 0
+      [  set allowed-patches lput clr-mud allowed-patches
+         set color colorA
+         if danger-harms = 1 [
+           set allowed-patches lput clr-danger allowed-patches
+         ]
       ]
+
+      ;; new requirement in December - let the main building be a possible destination.
+      if dest = 1 [
+           set allowed-patches lput clr-fixed-facility allowed-patches
+      ]
+
       set no-energy-tick 0
 
       set-new-destination dest 1 0
@@ -1266,7 +1201,7 @@ Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 
 @#$#@#$#@
-NetLogo 5.2.1
+NetLogo 5.3
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@

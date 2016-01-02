@@ -1,0 +1,124 @@
+to-report building-stats [building-num]
+    let bx1 min [pxcor] of patches with [building-number = building-num]
+    let by1 min [pycor] of patches with [building-number = building-num]
+    let bwid max [pxcor] of patches with [building-number = building-num] - bx1
+    let blen max [pycor] of patches with [building-number = building-num] - by1
+
+    let avoiders count turtles with [avoid-mud? = 1 and home-building = building-num]
+    let bold count turtles with [avoid-mud? = 0 and home-building = building-num]
+    let avoiders-trips  mean [trips-completed] of  turtles with [avoid-mud? = 1 and home-building = building-num]
+    let bold-trips  mean [trips-completed] of  turtles with [avoid-mud? = 0 and home-building = building-num]
+    let avoiders-triptime 0
+    if avoiders-trips > 0 [ set avoiders-triptime total-ticks / avoiders-trips ]
+    let bold-triptime 0
+    if bold-trips > 0 [ set bold-triptime  total-ticks / bold-trips]
+
+    let napper-trips 0
+;;    if groupnum = 2 [
+       set napper-trips mean  [no-energy-tick] of workers with [no-energy-tick > 0]
+;;    ]
+
+    report (list building-num bx1 by1 bwid blen avoiders bold avoiders-trips bold-trips avoiders-triptime bold-triptime napper-trips)
+end
+
+to-report mouse-clicked?
+  report (mouse-was-down? = true and not mouse-down?)
+end
+
+to move-building
+
+  if mouse-down?
+  [
+    without-interruption [
+         let temp-building-width 20
+         let temp-building-height 20
+
+         ;; grab the building size, and clear the old building
+         ask patches with [building-number = building-to-move] [
+           set pcolor  clr-path
+           set building-number  0
+           set temp-building-width  building-width
+           set temp-building-height building-height
+
+         ]
+
+         ;; create the new building
+         let x2  mouse-xcor + temp-building-width
+         let y2   mouse-ycor + temp-building-height
+         construct-hovel building-to-move mouse-xcor mouse-ycor x2 y2
+
+
+         ;; before execution, move workers to their building.  If already executing, reset their directions.
+         ifelse ticks = 0 [
+           ask workers with [home-building = building-to-move][
+              move-to one-of patches with [building-number = building-to-move]
+           ]
+         ][
+            redirect-workers
+         ]
+         stop
+       ]
+  ]
+
+end
+
+
+to construct-hovel [building-num x1 y1 x2 y2]
+  without-interruption
+  [
+   ask patches with [pxcor >= x1 and pxcor <= x2 and  pycor >= y1 and pycor <= y2]
+   [
+     set pcolor  clr-moveable-facility
+     set building-number  building-num
+     set building-width x2 - x1
+     set building-height y2 - y1
+   ]
+
+  ask patches with [pxcor = x1 + 5 and pycor = y1 + 5]
+   [
+     set plabel-color black
+     set plabel building-num
+   ]
+  ]
+end
+
+
+to-report work-time [building-num]
+  foreach building-list [
+    if building-num = item 0 ? [
+      let min-time item 11 ?
+      let range item 12 ? - item 11 ?
+      let the-time random (range) + min-time
+      report the-time
+    ]
+  ]
+
+  report 0
+end
+
+
+to draw-mainbuilding 
+  ask patches with [pxcor >= 71 and pycor >= 108 and pxcor <= 114 and pycor <= 149]
+  [set pcolor clr-fixed-facility
+    set building-number 1]   
+end
+
+to  make-buildings-from-list[  ]
+  foreach building-list [
+    let buildnum  item 0 ?
+    if buildnum != "facility" [
+      let buildname  item 1 ?
+      let x1  item 2 ?
+      let y1  item 3 ?
+      let width  item 4 ?
+      let height  item 5 ?
+      let x2  x1 + width
+      let y2  y1 + height
+
+      construct-hovel buildnum x1 y1 x2 y2
+    ]
+  ]
+  draw-mainbuilding 
+  
+end
+

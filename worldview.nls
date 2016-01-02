@@ -79,6 +79,7 @@ to setup-patches [mapfile colorfile]
       if (pcolor >= 120 and pcolor <= 128 ) [ set pcolor clr-fixed-facility ]
       if (pcolor >= 30 and pcolor <= 35 ) [ set pcolor clr-void ]
       if (pcolor >= 36 and pcolor <= 36 ) [ set pcolor clr-mud ]   ;; not possible to sort road/mud here
+      ;; 37 is road
       if (pcolor >= 38 and pcolor <= 38 ) [ set pcolor clr-path ]
       if (pcolor >= 26 and pcolor <= 29 ) [ set pcolor clr-danger ]
       if (pcolor = 50 ) [ set pcolor clr-void ]
