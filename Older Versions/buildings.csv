@@ -1,0 +1,4 @@
+facility,name,x,y,width,height,num workers,dest,slow in mud,tired in mud,risk danger,min time working,max time working
+14,long term laydown,34,115,25,15,375,1,1,1,0,17,20
+18,rebar yard,120,60,20,10,150,14,0,1,0,13,20
+15,scaffold storage,73,160,14,20,280,"14,18",0,1,1,10,12
