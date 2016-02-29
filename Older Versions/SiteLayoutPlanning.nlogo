@@ -5,9 +5,6 @@ breed [ workers ]
 
 patches-own [
   footprints           ;; amount of footprints on this patch - good paths get walked on more, people move toward them.
-  material             ;; amount of material on this patch (0, 1, or 2) - something to be picked up and moved
-  sink?                ;; true on sink patches, false elsewhere - places where the materials are being taken to
-  nest-scent           ;; number that is higher closer to the nest - pulls people toward the sink
   building-number   ;; number (14, 15, or 16) to identify the material sources
   dead-end             ;; to prevent workers from cycling in one spot  (mudders are not getting trapped)
 ]
@@ -15,16 +12,18 @@ patches-own [
 workers-own [
   searching?            ;; 1 if going to the materials, 0 if returning
   energy                ;; start at 10, at zero just quit
-  avoid-mud?             ;; 1 to go around mud, 0 to go through it
+  avoid-mud?            ;; 1 to go around mud, 0 to go through it
   lowest-road           ;; colour of squares we can step on.  mud has a lower number than road
   trips-completed       ;; number of round-trip journies
   destination-building  ;; number of the building they are currently heading to
   goal                  ;; random space within the building they are heading to
   previous-patch        ;; last place this dude was standing
   group                 ;; 1 2 or 3
+  dice-tossed?          ;; for people in the danger zone, toss the dice once per trip
+  no-energy-tick        ;; the tick count when this worker runs out of energy (group 2 - tired in mud)
 ]
 
-__includes ["setup_patches.nls" "homing-particles-obsticles.nls"] 
+__includes ["setup_alternate.nls" ] 
 
 to setup ; linked with setup button on interface
   clear-all
@@ -41,19 +40,43 @@ end
 
 
 to go  ;; forever button
-  ask workers
-  [ 
-    check-goal         ;; when we reach our goal, set a new goal
-    move-worker self
-   ]  
-     
+  
+  ;; look at the switches for each group.  Tell workers in that group to move
+  
+  if group-1-slow-in-mud
+  [ ask workers with [group = 1]
+     [ 
+       check-goal         ;; when we reach our goal, set a new goal
+       move-worker self
+     ] 
+  ] 
+
+  if group-2-tired-in-mud
+  [ ask workers with [group = 2]
+     [ 
+       check-goal         ;; when we reach our goal, set a new goal
+       move-worker self
+     ] 
+  ] 
+
+  if group-3-faces-danger
+  [ ask workers with [group = 3]
+     [ 
+       check-goal         ;; when we reach our goal, set a new goal
+       move-worker self
+     ] 
+  ] 
+       
   tick
+  if ticks > total-ticks [ stop ]
+  
 end
 
 to add-blocks   
   every .1
    [ if mouse-down?
-     [ ask patch mouse-xcor mouse-ycor [ 
+     [ ask patch mouse-xcor mouse-ycor [
+       ask patches in-radius 5 [ 
          if new-path-type = "mud"
             [ set pcolor clr-mud ]
          if new-path-type = "path"   
@@ -62,63 +85,107 @@ to add-blocks
             [ set pcolor clr-danger ]      
         ] 
      ]
+     ]
    ]
 end
 
 
+to set-direction [little-dude]
+  ;; look directly to goal;  if no trouble within the next steps, go forward.  otherwise, look to the side a bit
+  
+  ;; let car-ahead one-of turtles-on patch-ahead 1
+  let all-clear true
+  
+  set heading towards-nowrap goal
+  let counter 1
+  let steps-to-check one-of [7 8 9 10 11 12]   ;; a little variety in how far ahead we look
+  let shuffles 0                               ;; a fail-safe, so that a trapped person doesn't stand there twirling
+  while [counter < steps-to-check and shuffles < 15]   
+  [   
+      ;; check for a clear view
+      if [building-number] of  patch-ahead counter  = [ destination-building ] of little-dude 
+      [
+        stop
+      ]
+      
+      ;; if there is a block, turn a little and check again
+      if (([pcolor] of patch-ahead counter < lowest-road or pcolor > clr-path) and pcolor !=  clr-moveable-facility)
+      [
+        
+        ;; choose a direction, we know which way they have to go 
+        ifelse (searching? = 1)
+        [
+        
+           left one-of [7 8 9 10 11 12]   ;; adjust the angle, add a little variety in how far it turns.
+        ]
+        [
+           right one-of [7 8 9 10 11 12]   ;; adjust the angle, add a little variety in how far it turns.
+        ]
+        set counter 0
+        set shuffles shuffles + 1
+
+      ]
+     
+      
+
+      set counter counter + 1
+  ]
+end
+
+
+
 to move-worker [little-dude]
-    ;; turtles wallowing in mud only move on odd ticks, and wallow in the odd ticks
- ;;  if pcolor = clr-mud and ticks mod 2 = 0
- ;;  [stop]
-    
-    ;; get a list of spaces it is possible to step into.  Choose the one that is closest to our goal.  If none is possible, start to fade the colour.
+   
     without-interruption    
-     [let tn tilt-neighbors with [ ((pcolor >= [lowest-road] of little-dude and pcolor <= clr-path) or (pcolor = clr-moveable-facility)) and (dead-end < 1 or [avoid-mud?] of little-dude = 0)]
-       ifelse any? tn 
-       [ let target min-one-of tn [ distance-nowrap [goal] of little-dude ]
-         
-         ;; see if we were just here;  if we are stepping directly back to where we came from, this is a dead end
-         if back-track previous-patch  target 
-         [   
-             ask patch-here
-             [
-               set dead-end 1
-               ;;set pcolor  clr-mud + .5
-             ]
-          ]
-         
-         set previous-patch patch-here
-         
-         set heading towards-nowrap target 
+     [
+       
+         if energy < 1
+         [ set color black
+           stop 
+         ]
+       
+         set-direction little-dude
          
          if group = 1 [
            ifelse pcolor = clr-mud or pcolor = clr-danger
            [ forward .5 
-             set energy energy - 0.2]
+             set energy energy - 1]
           [ forward 1 ]
            if energy <= 0
            [  set color black ]
          ]
          if group = 2 [
            if pcolor = clr-mud or pcolor = clr-danger
-           [ set energy energy - 0.2 ]
+           [ set energy energy - 1 ]
            ifelse energy <= 0
-           [  set color black ]  ;; nap time
+           [  set color black 
+             set no-energy-tick  ticks]  ;; nap time
            [  forward 1 ]
          ]
          if group = 3 [
-           if pcolor = clr-mud or pcolor = clr-danger
-           [ if random 100 > 95 [ set color black] ]   ;; 5% chance of needing an ambulance
+           if pcolor = clr-danger and dice-tossed? = 0
+           [ 
+             if random 100 < chance-of-injury-percent 
+             [ set color black
+               set energy 0 ]
+             set dice-tossed? 1
+           ]  
            if color != black
            [  forward 1 ]
          ]
          
-       ]
-       [ ;; worker is trapped.  teleport him to the destination
-         move-to one-of patches with [pcolor = clr-path and dead-end = 0]
-       ]
+         set energy energy - 1
+         
     ]
 end
+
+;;to-report mudders-tired
+;;      let t []
+;;      ask turtles with no-energy-tick > 0
+;;mean  [no-energy-tick
+;;  turtles with [no-energy-tick > 0]]
+;;report (t)
+;;end
 
 
 to-report back-track [previous-step next-step]
@@ -164,20 +231,10 @@ to set-new-destination [new-dest new-searching add-trip ]
       set searching?  new-searching
       set trips-completed trips-completed + add-trip
       set previous-patch patch 0 0
+      set dice-tossed? 0
 end
 
 
-
-;; if they hit a wall, bounce away at an equal angle, like light reflecting.  
-to reflect 
-  ; avoid edges of worksite (black) and permanent buildings (clr-fixed-facility)
-  if [pcolor] of patch-at dx 0 = black or [pcolor] of patch-at dx 0 = clr-fixed-facility or ([pcolor] of patch-at dx 0 = clr-mud and avoid-mud? = 1) [
-    set heading (- heading)
-  ]
-  if [pcolor] of patch-at 0 dy = black or [pcolor] of patch-at 0 dy = clr-fixed-facility or ([pcolor] of patch-at 0 dy = clr-mud and avoid-mud? = 1) [
-    set heading (180 - heading)
-  ]
-end
 
 to setup-workers
 
@@ -186,7 +243,7 @@ to setup-workers
   [ sprout 1 [ init-worker orange yellow 1 15  ]  ]  
 
  
-  ;; group 3 loses energy in the mud, and will probably take a nap
+  ;; group 2 loses energy in the mud, and will probably take a nap
   ask patches with [building-number = 18] 
   [     sprout 1 [ init-worker 95 85 2 14 ]  ]  
 
@@ -204,7 +261,7 @@ to init-worker [  colorA colorB groupID dest-building]
       set breed workers
       set searching? 1
       set trips-completed 0
-      set energy 10
+      set energy total-ticks
       set avoid-mud? one-of [0 1]
       ifelse avoid-mud? = 1
       [  set lowest-road clr-road  ]
@@ -217,16 +274,18 @@ to init-worker [  colorA colorB groupID dest-building]
       set heading towards-nowrap goal
       set previous-patch patch 0 0
       set group groupID  
+      set dice-tossed? 0
+      set no-energy-tick 0
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-200
-11
-620
-452
+214
+8
+646
+461
 -1
 -1
-10.0
+2.0
 1
 10
 1
@@ -237,9 +296,9 @@ GRAPHICS-WINDOW
 1
 1
 0
-40
+210
 0
-40
+210
 0
 0
 1
@@ -263,17 +322,6 @@ NIL
 NIL
 1
 
-SWITCH
-1113
-33
-1258
-66
-Material-Warehouse-17
-Material-Warehouse-17
-1
-1
--1000
-
 BUTTON
 103
 17
@@ -290,50 +338,6 @@ NIL
 NIL
 NIL
 0
-
-SWITCH
-1113
-66
-1258
-99
-Small-Buildings
-Small-Buildings
-1
-1
--1000
-
-SWITCH
-1113
-99
-1258
-132
-Pools-Change
-Pools-Change
-1
-1
--1000
-
-SWITCH
-1113
-132
-1258
-165
-Building-3
-Building-3
-1
-1
--1000
-
-SWITCH
-1113
-165
-1258
-198
-Cafeteria-7
-Cafeteria-7
-1
-1
--1000
 
 TEXTBOX
 18
@@ -353,7 +357,7 @@ CHOOSER
 new-path-type
 new-path-type
 "mud" "path" "danger"
-2
+0
 
 BUTTON
 119
@@ -373,13 +377,13 @@ NIL
 1
 
 PLOT
-706
-14
-1099
-164
+643
+15
+1036
+165
 Productivity of Group 1
-NIL
-NIL
+ticks
+average trips
 0.0
 10.0
 0.0
@@ -388,17 +392,17 @@ true
 true
 "" ""
 PENS
-"Avoiding Mud" 1.0 0 -10899396 true "" "plot mean [trips-completed] of  turtles with [avoid-mud? = 1 and group = 1]"
+"Avoiding Mud" 1.0 0 -5825686 true "" "plot mean [trips-completed] of  turtles with [avoid-mud? = 1 and group = 1]"
 "Slow in Mud" 1.0 0 -13791810 true "" "plot mean [trips-completed] of  turtles with [avoid-mud? = 0 and group = 1]"
 
 PLOT
-706
-173
-1099
-323
+643
+163
+1036
+313
 Productivity of Group 2
-NIL
-NIL
+ticks
+average trips
 0.0
 10.0
 0.0
@@ -411,13 +415,13 @@ PENS
 "Tired in Mud" 1.0 0 -13791810 true "" "plot mean [trips-completed] of  turtles with [avoid-mud? = 0 and group = 2]"
 
 PLOT
-705
-334
-1100
-484
+643
+313
+1038
+463
 Productivity of Group 3
-NIL
-NIL
+ticks
+average trips
 0.0
 10.0
 0.0
@@ -426,28 +430,138 @@ true
 true
 "" ""
 PENS
-"Laughs in face of Danger" 1.0 0 -3844592 true "" "plot mean [trips-completed] of  turtles with [avoid-mud? = 0 and group = 3]"
-"Avoids Danger" 1.0 0 -4757638 true "" "plot mean [trips-completed] of  turtles with [avoid-mud? = 1 and group = 3]"
+"Laughs in face of Danger" 1.0 0 -13791810 true "" "plot mean [trips-completed] of  turtles with [avoid-mud? = 0 and group = 3]"
+"Avoids Danger" 1.0 0 -5825686 true "" "plot mean [trips-completed] of  turtles with [avoid-mud? = 1 and group = 3]"
 
 MONITOR
-1020
-241
-1098
-286
-Hammock Time
-count  turtles with [energy <= 0 and group = 2]
+956
+256
+1045
+301
+# Out of energy
+count  turtles with [energy <= 0 and avoid-mud? = 0 and group = 2]
 0
 1
 11
 
 MONITOR
-972
-402
-1078
-447
+903
+407
+1020
+452
 Ambulance Rides
-count  turtles with [color = black and group = 3]
+count  turtles with [color = black and avoid-mud? = 0 and group = 3]
 17
+1
+11
+
+INPUTBOX
+16
+187
+109
+247
+total-ticks
+2000
+1
+0
+Number
+
+SWITCH
+18
+266
+188
+299
+group-1-slow-in-mud
+group-1-slow-in-mud
+0
+1
+-1000
+
+SWITCH
+19
+299
+190
+332
+group-2-tired-in-mud
+group-2-tired-in-mud
+0
+1
+-1000
+
+SWITCH
+19
+333
+197
+366
+group-3-faces-danger
+group-3-faces-danger
+0
+1
+-1000
+
+INPUTBOX
+18
+365
+173
+425
+chance-of-injury-percent
+7
+1
+0
+Number
+
+MONITOR
+950
+66
+1039
+111
+# of Avoiders
+count turtles with [avoid-mud? = 1 and group = 1]
+17
+1
+11
+
+MONITOR
+950
+110
+1038
+155
+# of mudders
+count turtles with [avoid-mud? = 0 and group = 1]
+17
+1
+11
+
+MONITOR
+957
+211
+1045
+256
+# of mudders
+count turtles with [avoid-mud? = 0 and group = 2]
+17
+1
+11
+
+MONITOR
+903
+362
+1020
+407
+# of danger lovers
+count turtles with [avoid-mud? = 0 and group = 3]
+17
+1
+11
+
+MONITOR
+1066
+225
+1243
+270
+average time when mudders tired
+mean  [no-energy-tick] of workers with [no-energy-tick > 0]
+0
 1
 11
 
