@@ -6,10 +6,11 @@ patches-own [
 ]
 
 to add-blocks
+  let fixedcolors (list clr-moveable-facility clr-fixed-facility clr-fixed-facility2 clr-void)
   every .1
    [ if mouse-down?
      [ ask patch mouse-xcor mouse-ycor [
-       ask patches in-radius 3 [
+       ask patches in-radius 3 with [not member? pcolor fixedcolors] [
          if new-path-type = "mud"
             [ set pcolor clr-mud ]
          if new-path-type = "path"
@@ -75,24 +76,24 @@ to setup-patches [mapfile colorfile]
     if (not member? pcolor mapcolors) [
       if (pcolor > 0 and pcolor <= 4) [ set pcolor clr-void ]
       if (pcolor >= 5 and pcolor <= 9) [ set pcolor clr-path ]
-      if (pcolor >= 130 and pcolor <= 134) [ set pcolor clr-fixed-facility ]
-      if (pcolor >= 120 and pcolor <= 128 ) [ set pcolor clr-fixed-facility ]
+      if (pcolor >= 17 and pcolor <= 19 ) [ set pcolor clr-path ]
+      if (pcolor = 20 ) [ set pcolor clr-void ]
+      if (pcolor >= 26 and pcolor <= 29 ) [ set pcolor clr-danger ]
       if (pcolor >= 30 and pcolor <= 35 ) [ set pcolor clr-void ]
       if (pcolor >= 36 and pcolor <= 36 ) [ set pcolor clr-mud ]   ;; not possible to sort road/mud here
       ;; 37 is road
       if (pcolor >= 38 and pcolor <= 38 ) [ set pcolor clr-path ]
-      if (pcolor >= 26 and pcolor <= 29 ) [ set pcolor clr-danger ]
+      if (pcolor = 40 ) [ set pcolor clr-void ]  ;; divisble by 10 is always black, in every hue.  
       if (pcolor = 50 ) [ set pcolor clr-void ]
-      if (pcolor = 40 ) [ set pcolor clr-void ]
-      if (pcolor = 20 ) [ set pcolor clr-void ]
       if (pcolor = 100 ) [ set pcolor clr-void ]
-      if (pcolor >= 17 and pcolor <= 19 ) [ set pcolor clr-path ]
+      if (pcolor >= 120 and pcolor <= 128 ) [ set pcolor clr-fixed-facility ]
+      if (pcolor >= 130 and pcolor <= 134) [ set pcolor clr-fixed-facility ]
       if (not member? pcolor extracolors and not member? pcolor mapcolors) [
          set extracolors lput pcolor extracolors  ;; did we miss any?
       ]
     ]
   ]
-  ;;show extracolors
+  ;; show extracolors
 
 end
 
