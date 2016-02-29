@@ -1,5 +1,5 @@
 extensions [csv  bitmap]
-__includes ["worldview.nls" "building-code.nls"]
+__includes ["worldview.nls" "building-code.nls" "navigation.nls" ]
 
 
 globals [
@@ -13,7 +13,7 @@ globals [
   clr-void
   building-list
   mouse-was-down?
-
+  breadcrumb-trails
 ]
 
 
@@ -49,7 +49,12 @@ to setup ; linked with setup button on interface
   setup-patches "moveablebuildings.bmp" "colours.csv"
   set building-list csv:from-file "buildings.csv"
   make-buildings-from-list
+
+  create-breadcrumbs 18 14
+
   setup-workers
+
+
   reset-ticks
 end
 
@@ -112,7 +117,7 @@ to write-results
   ]
   csv:to-file "results.csv" myout
 
-  bitmap:export bitmap:from-view "alteredbitmap.bmp"
+  bitmap:export bitmap:from-view "results-bitmap.bmp"
 
 end
 
@@ -273,77 +278,6 @@ to face-longest-path [little-dude path-list]
       die
    ]]
 
-
-end
-
-
-
-to set-direction [little-dude]
-  ;; look directly to goal;  if no trouble within the next steps, go forward.  otherwise, look to the side a bit
-
-  let all-clear true
-  let currentheading [heading] of little-dude
-
-  ;; sometimes the "blue sky" is wrong.
-  let nextpatch [pcolor] of patch-ahead 1
-  if not member? nextpatch  allowed-patches and  blue-sky-steps > 0 [
-    set blue-sky-steps 0
-    set hugging-edges-steps 10
-
-  ]
-
-
-  ;; we are not hugging an edge, check around for a good path.
-  if hugging-edges-steps < 1 [
-      ifelse blue-sky-steps < 1 [
-         let mypaths possible-path-list little-dude
-         face-longest-path little-dude mypaths
-      ][
-         set blue-sky-steps  blue-sky-steps - 1  ;; stay on the current course for a few steps
-
-      ]
-  ]
-
-
-  ;;  should we try hugging and edge and following it out of this dead end?
-  if (hugging-edges-steps > 0) [
-
-
-      ask little-dude [
-         set heading  currentheading
-      ]
-
-
-      ;; another solution would be to set up markers between the buildings, and when you can't see a building, look for a marker
-      ;; a problem with edge creeping is that all of the workers are in a single trail, not using the width of the path
-
-      ;; first, turn towards the item we are going around  (it is like keeping a hand on the wall)
-      ;;ifelse (go-right? = true) [ left 45 ][ right 45 ]
-
-      ;; creep the edge.  If you can't step forward, look right.  Only look one step ahead; eventually we will creep out to open space.
-      set nextpatch [pcolor] of patch-ahead 1
-      let step-counter 0
-      while [not member? nextpatch  allowed-patches and step-counter < 10] [
-        ifelse (go-right? = true) [
-           right 45
-        ][
-           left 45
-        ]
-        set nextpatch [pcolor] of patch-ahead 1
-        set step-counter step-counter + 1
-      ]
-
-      set hugging-edges-steps hugging-edges-steps - 1
-
-      ;; this guy is totally trapped, just give up.
-      if (step-counter = 10) [
-        set color black
-        set pcolor green
-        show (word "trapped worker: " who)
-        die
-      ]
-
-  ]
 
 end
 
