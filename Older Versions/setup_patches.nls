@@ -1,0 +1,558 @@
+extensions[ bitmap ]
+
+globals [
+  clr-path
+  clr-mud 
+  clr-road
+  clr-danger
+  clr-moveable-facility
+  clr-fixed-facility
+  clr-fixed-facility2
+]
+
+to setup-patches
+  ask patches 
+  [
+    set footprints 0
+    set material 0
+    set sink? false
+    set nest-scent 0
+    set building-number 0
+  ]
+  
+  set clr-path 39   ; beige
+  set clr-road 37   ; med brown
+  set clr-mud 35    ; light brown
+  set clr-danger 27 ; oranage
+  set clr-moveable-facility 55  ;green
+  set clr-fixed-facility 122 ; dark purple
+  set clr-fixed-facility2 124 ; lighter purple
+  
+  ;;   bitmap:copy-to-pcolors (bitmap:import "drawing.png") true
+    
+  ; list to explain patch colours
+  draw-legend
+  
+  ; beige for easy walking
+  draw-paths
+  
+  ; darker for slower walking
+  draw-mud
+  
+  ; darkest for roads
+  draw-road2
+  draw-road1
+    
+  ; work zones 
+  draw-9-pipingyard
+  draw-10-carpentryshop
+  draw-13-infoguard
+  draw-14-longetermlaydownyard
+  draw-15-scaffoldstorage
+  draw-16-cementwarehouse
+  draw-17-materialwarehouse
+  draw-18-rebaryard
+  draw-19-parkinglot
+  draw-20-maintenanceshop
+  draw-21-toilet
+  draw-22-machineroom
+  draw-23-offices
+  draw-24-tank
+  draw-25-firstaid
+  draw-26-samplinglab
+  draw-27-weldingshop
+  
+  ; fixed buildings
+  draw-mainbuilding
+  draw-gate1
+  draw-12-gate2
+  draw-3-building
+  draw-5-pool-1
+  draw-6-changerooms
+  draw-7-cafeteria
+  draw-8-pool-2
+end
+
+to draw-legend
+   ask patches with [pxcor >= 35  and pxcor <= 37 and pycor = 38]
+   [set pcolor clr-path
+    ]
+   ; label sticks out to the left of the patch it is on
+   ask patches with [pxcor = 33 and pycor = 38]
+   [
+     set plabel-color white
+     set plabel "Path"
+        ]
+   
+   ask patches with [pxcor >= 35  and pxcor <= 37 and pycor = 36]
+   [set pcolor clr-mud
+    ]
+   ask patches with [pxcor = 33 and pycor = 36]
+   [
+     set plabel-color white
+     set plabel "Mud"
+        ]
+      
+   ask patches with [pxcor >= 35  and pxcor <= 37 and pycor = 34]
+   [set pcolor clr-road
+    ]
+   ask patches with [pxcor = 33 and pycor = 34]
+   [
+     set plabel-color white
+     set plabel "Road"
+        ]
+      
+   ask patches with [pxcor >= 35  and pxcor <= 37 and pycor = 32]
+   [set pcolor clr-danger
+    ]
+   ask patches with [pxcor = 33 and pycor = 32]
+   [
+     set plabel-color white
+     set plabel "Danger"
+        ]
+      
+   ask patches with [pxcor >= 35  and pxcor <= 37 and pycor = 28]
+   [set pcolor clr-moveable-facility
+    ]
+   ask patches with [pxcor = 33 and pycor = 28]
+   [
+     set plabel-color white
+     set plabel "Moveable Facility"
+        ]
+   
+   ask patches with [pxcor >= 35  and pxcor <= 36 and pycor = 26]
+   [set pcolor clr-fixed-facility]
+   ask patches with [pxcor = 37 and pycor = 26]
+   [set pcolor clr-fixed-facility2]
+   ask patches with [pxcor = 33 and pycor = 26]
+   [
+     set plabel-color white
+     set plabel "Fixed Facility"
+        ]
+      
+      
+end
+
+to draw-15-scaffoldstorage
+  ask patches with [pxcor >= 14 and pycor >= 31 and pxcor <= 16 and pycor <= 34]
+  [set pcolor clr-moveable-facility
+       set building-number 15
+   set material one-of [1 2] ] 
+   ask patches with [pxcor = 16 and pycor = 32]
+   [
+     set plabel-color white
+     set plabel "Scaffolds"
+        ]  
+   ask patches with [pxcor = 16 and pycor = 33]
+   [
+     set plabel-color white
+     set plabel "15."
+        ] 
+   end
+
+to draw-13-infoguard
+  ask patches with [pxcor = 4 and pycor >= 21 and pycor <= 22]
+  [ 
+    ifelse Small-buildings [set pcolor clr-moveable-facility
+                            set building-number 13]
+                      [set pcolor clr-path
+                        set building-number 0]
+  ]
+end
+
+to draw-19-parkinglot
+  ask patches with [pxcor >= 6 and pxcor <= 9 and pycor = 17]
+  [ 
+    ifelse Small-buildings [set pcolor clr-moveable-facility
+                            set building-number 19]
+                      [set pcolor clr-path
+                        set building-number 0]
+  ]
+end
+to draw-23-offices
+  ask patches with [pxcor >= 10 and pxcor <= 11 and pycor = 17]
+  [ 
+    ifelse Small-Buildings [set pcolor clr-moveable-facility + 0.3
+                            set building-number 23]
+                           [set pcolor clr-path
+                             set building-number 0]
+  ]
+end
+
+to draw-22-machineroom
+  ask patches with [pxcor >= 30 and pxcor <= 31 and pycor = 11]
+  [ 
+    ifelse Small-Buildings [set pcolor clr-moveable-facility
+                            set building-number 22]
+                           [set pcolor clr-path
+                             set building-number 0]
+  ]
+end
+
+to draw-25-firstaid
+  ask patches with [pxcor >= 10 and pxcor <= 11 and pycor = 16]
+  [ 
+    ifelse Small-Buildings [set pcolor clr-moveable-facility - 0.3
+                            set building-number 25]
+                           [set pcolor clr-path
+                             set building-number 0]
+  ]
+end
+
+to  draw-9-pipingyard
+  ask patches with [pxcor = 13 and pycor <= 22 and pycor >= 20]
+  [ 
+    ifelse Small-Buildings [set pcolor clr-moveable-facility
+                            set building-number 9]
+                           [set pcolor clr-mud
+                             set building-number 0]
+  ]
+end
+to  draw-10-carpentryshop
+  ask patches with [pxcor >= 14 and pxcor <= 16 and pycor = 20]
+  [ 
+    ifelse Small-Buildings [set pcolor clr-moveable-facility - 0.4
+                            set building-number 10]
+                           [set pcolor clr-mud
+                             set building-number 0]
+  ]
+end
+to  draw-26-samplinglab
+  ask patches with [pxcor = 18 and pycor = 17]
+  [ 
+    ifelse Small-Buildings 
+       [set pcolor clr-moveable-facility - 0.4
+         set building-number 26]
+       [set pcolor clr-path
+         set building-number 0]
+  ]
+end
+
+to  draw-21-toilet
+  ask patches with [pxcor >= 17 and pxcor <= 19 and pycor = 15]
+  [ 
+    ifelse Small-Buildings [set pcolor clr-moveable-facility - 0.4
+      set building-number 21]
+                           [set pcolor clr-path
+                             set building-number 0]
+  ]
+end
+to  draw-24-tank
+  ask patches with [pxcor >= 18 and pxcor <= 19 and pycor = 14]
+  [ 
+    ifelse Small-Buildings [set pcolor clr-moveable-facility + 0.4
+      set building-number 24]
+                           [set pcolor clr-path
+                             set building-number 0]
+  ]
+end
+
+
+
+to draw-5-pool-1
+  ask patches with [pxcor >= 26 and pxcor <= 30 and pycor >= 18 and pycor <= 20]
+  [ 
+    ifelse Pools-Change [set pcolor clr-fixed-facility
+      set building-number 5]
+                           [set pcolor clr-mud
+                             set building-number 0]
+  ]
+end
+
+to draw-8-pool-2
+  ask patches with [pxcor >= 32 and pxcor <= 34 and pycor >= 18 and pycor <= 19]
+  [ 
+    ifelse Pools-Change [set pcolor clr-fixed-facility
+      set building-number 8]
+                           [set pcolor clr-mud
+                             set building-number 0]
+  ]
+end
+
+to draw-6-changerooms
+  ask patches with [pxcor >= 26 and pxcor <= 31 and pycor >= 15 and pycor <= 16]
+  [ 
+    ifelse Pools-Change [set pcolor clr-fixed-facility
+      set building-number 6]
+                           [set pcolor clr-mud
+                             set building-number 7]
+
+  ]
+end
+
+to draw-3-building
+  ask patches with [(pxcor >= 20 and pxcor <= 23 and pycor >= 7 and pycor <= 11)
+                    or (pxcor >= 15 and pxcor <= 20 and pycor >= 10 and pycor <= 11)
+                    or (pxcor >= 20 and pxcor <= 21 and pycor = 6)
+                     or (pxcor >= 21 and pxcor <= 22 and pycor = 12)]
+  [ 
+    ifelse Building-3 [set pcolor clr-fixed-facility
+      set building-number 3]
+                      [set pcolor clr-mud
+                        set building-number 0]
+    if Building-3 [                 
+    ask patches with [pxcor = 22 and pycor = 10]
+        [
+           set plabel-color white
+           set plabel "3 - Unnamed Building"
+        ]
+    ]
+
+  ]
+end
+
+
+to draw-20-maintenanceshop
+  ask patches with [pxcor >= 9 and pycor = 33 and pxcor <= 11]
+  [set pcolor clr-moveable-facility
+    set building-number 20] 
+  
+end
+
+to draw-18-rebaryard
+  ask patches with [(pxcor >= 24 and pycor >= 12 and pycor <= 13 and pxcor <= 26) or (pxcor = 27 and pycor = 13)]
+  [set pcolor clr-moveable-facility
+    set building-number 18] 
+end
+
+
+to draw-27-weldingshop
+  ask patches with [pxcor = 27 and pycor = 12]
+  [set pcolor clr-moveable-facility - 0.5
+    set building-number 27] 
+end
+
+
+to draw-17-materialwarehouse
+  ifelse Material-Warehouse-17 
+  [ 
+      ask patches with [pxcor >= 9 and pycor >= 27 and pxcor <= 12 and pycor <= 28]
+        [set pcolor clr-moveable-facility
+          set building-number 17]    
+      ask patches with [pxcor = 12 and pycor = 28]
+        [
+           set plabel-color white
+           set plabel "17-M.W."
+        ]
+  ]
+  [
+      ask patches with [pxcor >= 9 and pycor >= 27 and pxcor <= 9 and pycor <= 28]  ; behind building-17
+          [set pcolor clr-path] 
+      ask patches with [pxcor >= 10 and pycor >= 27 and pxcor <= 12 and pycor <= 28]  ;behind building 17
+          [set pcolor clr-mud]  
+  ]
+end
+
+
+to draw-7-cafeteria
+  if Cafeteria-7 
+  [ 
+      ask patches with [(pxcor >= 25 and pycor >= 24 and pxcor <= 27 and pycor <= 26) or (pxcor = 26 and pycor = 27) or (pxcor = 28 and pycor = 25)]
+        [set pcolor clr-fixed-facility + 0.2
+          set building-number 7]    
+      ask patches with [pxcor = 28 and pycor = 25]
+        [
+           set plabel-color white
+           set plabel "7-Cafeteria"
+        ]
+  ]
+
+end
+
+to draw-14-longetermlaydownyard  ; 14 on the chart, and the sink for materials
+  ask patches with [pxcor >= 6 and pycor >= 22 and pxcor <= 10 and pycor <= 24]
+  [set pcolor clr-moveable-facility 
+    set building-number 14
+   set sink? true]
+  
+  ; everything else notes how far it is from the sink
+  ask patches
+  [set nest-scent 200 - distancexy 8 23]
+end 
+  
+to draw-16-cementwarehouse
+  ask patches with [pxcor >= 15 and pycor >= 16 and pxcor <= 17 and pycor <= 17]
+  [set pcolor clr-moveable-facility
+    set building-number 16
+   set material one-of [1 2] ] 
+  ask patches with [pxcor >= 15 and pycor >= 14 and pxcor <= 16 and pycor <= 15]
+  [set pcolor clr-moveable-facility
+   set building-number 16
+   set material one-of [1 2] ]
+end
+
+to draw-road2
+  ask patches with [pxcor >= 9 and pycor >= 29 and pxcor <= 23 and pycor <= 30]
+  [set pcolor clr-road]   
+end
+to draw-road1
+  ask patches with [pxcor >= 5 and pycor >= 18 and pxcor <= 25 and pycor <= 19]
+  [set pcolor clr-road]   
+  
+end
+
+
+
+to draw-mainbuilding 
+  ask patches with [pxcor >= 14 and pycor >= 21 and pxcor <= 21 and pycor <= 28]
+  [set pcolor clr-fixed-facility
+    set building-number 1]   
+end
+
+to draw-gate1
+  ask patches with [pxcor = 7 and pycor >= 31 and pycor <= 32]
+  [set pcolor clr-fixed-facility2
+    set building-number 11]   
+end
+to draw-12-gate2
+  ask patches with [pxcor = 3 and pycor >= 20 and pycor <= 21]
+  [set pcolor clr-fixed-facility2
+    set building-number 12]   
+end
+
+to draw-paths
+  ; left of main building
+  
+  ; right of scaffoldstorage
+  ask patches with [pxcor >= 17 and pycor >= 31 and pxcor <= 20 and pycor <= 33]
+  [set pcolor clr-path]  
+  ; left of maintainance shop 
+  ask patches with [pxcor = 8 and pycor = 33]
+  [set pcolor clr-path]
+  ; above maintainance
+  ask patches with [pxcor >= 10 and pycor = 35 and pxcor <= 17]
+  [set pcolor clr-path] 
+  ask patches with [pxcor >= 21 and pycor = 31 and pxcor <= 22]
+  [set pcolor clr-path] 
+  ask patches with [pxcor = 21 and pycor = 32 ]
+  [set pcolor clr-path] 
+  ask patches with [pxcor = 7 and pycor = 25 ]
+  [set pcolor clr-path] 
+  ask patches with [pxcor = 7 and pycor = 16 ]
+  [set pcolor clr-path]
+  ask patches with [pxcor = 9 and pycor = 14 ]
+  [set pcolor clr-path] 
+  ask patches with [pxcor = 25 and pycor = 3 ]
+  [set pcolor clr-path] 
+  ask patches with [pxcor = 37 and pycor = 15 ]
+  [set pcolor clr-path] 
+  ask patches with [pxcor = 13 and pycor = 10 ]
+  [set pcolor clr-path] 
+  ask patches with [pxcor = 20 and pycor = 3 ]
+  [set pcolor clr-path] 
+  ask patches with [pxcor >= 11 and pycor = 36 and pxcor <= 16]
+  [set pcolor clr-path] 
+  ask patches with [pxcor >= 22 and pycor = 1 and pxcor <= 23]
+  [set pcolor clr-path] 
+  ask patches with [pxcor >= 12 and pycor = 37 and pxcor <= 15]
+  [set pcolor clr-path] 
+  ask patches with [pxcor >= 13 and pycor = 38 and pxcor <= 14]
+  [set pcolor clr-path] 
+  ask patches with [pxcor >= 9 and pycor = 34 and pxcor <= 12]
+  [set pcolor clr-path] 
+  ask patches with [pxcor >= 25 and pycor = 4 and pxcor <= 26]
+  [set pcolor clr-path] 
+  ask patches with [pxcor >= 28 and pycor = 8 and pxcor <= 30]
+  [set pcolor clr-path] 
+  ask patches with [pxcor >= 28 and pycor = 7 and pxcor <= 29]
+  [set pcolor clr-path] 
+  ask patches with [pxcor >= 28 and pycor = 6 and pxcor <= 28]
+  [set pcolor clr-path] 
+  ask patches with [pxcor >= 34 and pycor = 13 and pxcor <= 35]
+  [set pcolor clr-path] 
+  ask patches with [pxcor >= 34 and pycor = 12 and pxcor <= 34]
+  [set pcolor clr-path] 
+  ask patches with [pxcor >= 11 and pycor = 12 and pxcor <= 13]
+  [set pcolor clr-path] 
+  ask patches with [pxcor >= 12 and pycor = 11 and pxcor <= 13]
+  [set pcolor clr-path] 
+  ask patches with [pxcor >= 15 and pycor = 8 and pxcor <= 18]
+  [set pcolor clr-path] 
+  ask patches with [pxcor >= 16 and pycor = 7 and pxcor <= 18]
+  [set pcolor clr-path] 
+  ask patches with [pxcor >= 17 and pycor = 6 and pxcor <= 18]
+  [set pcolor clr-path] 
+  ask patches with [pxcor >= 18 and pycor = 5 and pxcor <= 20]
+  [set pcolor clr-path] 
+  ask patches with [pxcor >= 19 and pycor = 4 and pxcor <= 20]
+  [set pcolor clr-path] 
+  ask patches with [pxcor >= 12 and pycor >= 31 and pxcor <= 13 and pycor <= 34]
+  [set pcolor clr-path]  
+  ask patches with [pxcor >= 10 and pycor >= 13 and pxcor <= 11 and pycor <= 15]
+  [set pcolor clr-path]  
+  ask patches with [pxcor >= 9 and pycor >= 31 and pxcor <= 11 and pycor <= 32]
+  [set pcolor clr-path]  
+  ask patches with [pxcor >= 17 and pycor >= 34 and pxcor <= 18 and pycor <= 34]
+  [set pcolor clr-path]  
+  ask patches with [pxcor >= 8 and pycor >= 15 and pxcor <= 12 and pycor <= 26]
+  [set pcolor clr-path]  
+  ask patches with [pxcor >= 5 and pycor >= 20 and pxcor <= 7 and pycor <= 23]
+  [set pcolor clr-path]  
+  ask patches with [pxcor >= 10 and pycor >= 13 and pxcor <= 20 and pycor <= 17]
+  [set pcolor clr-path]  
+  ask patches with [pxcor >= 21 and pycor >= 2 and pxcor <= 24 and pycor <= 5]
+  [set pcolor clr-path]  
+   
+  ask patches with [pxcor >= 25 and pycor >= 5 and pxcor <= 27 and pycor <= 8]
+  [set pcolor clr-path]    
+  ask patches with [pxcor >= 24 and pycor >= 11 and pxcor <= 33 and pycor <= 13]
+  [set pcolor clr-path]    
+  ask patches with [pxcor >= 33 and pycor >= 14 and pxcor <= 36 and pycor <= 15]
+  [set pcolor clr-path]    
+  
+  ; not in design - needed to get around building 17
+  ask patches with [pxcor >= 7 and pycor >= 31 and pxcor <= 7 and pycor <= 32]
+  [set pcolor clr-path]    
+  ask patches with [pxcor >= 8 and pycor >= 30 and pxcor <= 8 and pycor <= 32]
+  [set pcolor clr-path]    
+  ask patches with [pxcor >= 8 and pycor >= 27 and pxcor <= 8 and pycor <= 29]
+  [set pcolor clr-path]    
+end
+
+to draw-mud
+  ask patches with [pxcor >= 13 and pycor >= 20 and pxcor <= 25 and pycor <= 28]
+  [set pcolor clr-mud]    
+  ; ask patches with [pxcor >= 23 and pycor >= 29 and pxcor <= 24 and pycor <= 31]
+  ; [set pcolor clr-mud]    
+  ask patches with [pxcor = 24 and pycor = 29 ]
+  [set pcolor clr-mud] 
+  ask patches with [pxcor = 32 and pycor = 21 ]
+  [set pcolor clr-mud] 
+  ask patches with [pxcor = 32 and pycor = 10 ]
+  [set pcolor clr-mud] 
+  ask patches with [pxcor = 38 and pycor = 16 ]
+  [set pcolor clr-mud] 
+  ask patches with [pxcor = 34 and pycor = 19 ]
+  [set pcolor clr-mud] 
+  ask patches with [pxcor = 35 and pycor = 19 ]
+  [set pcolor clr-mud] 
+  ask patches with [pxcor >= 13 and pycor >= 18 and pxcor <= 25 and pycor <= 22]
+  [set pcolor clr-mud]    
+ 
+  ask patches with [pxcor = 4 and pycor >= 19 and pycor <= 20]
+  [set pcolor clr-mud]
+  ask patches with [pxcor = 30 and pycor >= 21 and pycor <= 23]
+  [set pcolor clr-mud]
+  ask patches with [pxcor = 31 and pycor >= 21 and pycor <= 22]
+  [set pcolor clr-mud]
+  ask patches with [pxcor >= 21 and pycor = 13 and pxcor <= 23]
+  [set pcolor clr-mud]
+  ask patches with [pxcor >= 35 and pycor = 18 and pxcor <= 36]
+  [set pcolor clr-mud]
+  ask patches with [pxcor >= 22 and pycor >= 20 and pxcor <= 27 and pycor <= 26]
+  [set pcolor clr-mud]  
+  ask patches with [pxcor >= 28 and pycor >= 21 and pxcor <= 29 and pycor <= 24]
+  [set pcolor clr-mud]  
+  ask patches with [pxcor >= 32 and pycor >= 16 and pxcor <= 34 and pycor <= 20]
+  [set pcolor clr-mud]  
+  ask patches with [pxcor >= 21 and pycor >= 14 and pxcor <= 32 and pycor <= 20]
+  [set pcolor clr-mud]  
+  ask patches with [pxcor >= 14 and pycor >= 9 and pxcor <= 23 and pycor <= 12]
+  [set pcolor clr-mud]  
+  ask patches with [pxcor >= 19 and pycor >= 6 and pxcor <= 24 and pycor <= 8]
+  [set pcolor clr-mud]  
+  ask patches with [pxcor >= 24 and pycor >= 9 and pxcor <= 31 and pycor <= 10]
+  [set pcolor clr-mud]  
+  ask patches with [pxcor >= 35 and pycor >= 16 and pxcor <= 37 and pycor <= 17]
+  [set pcolor clr-mud]  
+end
