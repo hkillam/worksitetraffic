@@ -1,24 +1,22 @@
 
-to create-breadcrumbs [src dst]
+;; call this function before workers are created
+to create-breadcrumbs [src dst bold danger-harms]
+  let breadcrumbs []
   
-  ;; create temp worker
-  let buildnum  src
-  create-workers 1 [
-      move-to one-of patches with [building-number = src]
-      init-worker red red (list dst) src 1 1 1
-  ]
+  
+  set breadcrumbs lput src breadcrumbs
+  set breadcrumbs lput dst breadcrumbs
+  set breadcrumbs lput  bold breadcrumbs
+  set breadcrumbs lput 0 breadcrumbs  ;; place holder for path length
+  
+  create-temp-worker src dst bold danger-harms
   
   ask workers
   [
-    
-       pen-down
-
        while [[building-number] of patch-ahead 1 != dst] [
-         
          
          ;; get list of all possible paths
          let mypaths possible-path-list self
-         
          
          ifelse length mypaths = 0 [
            ;; there are no paths, hug the edges.
@@ -26,40 +24,109 @@ to create-breadcrumbs [src dst]
            show "trapped";
            stop 
          ][
-           ;; look for the longest path, grab that angle
-           let myheading  heading
-           let step-count  0
-           foreach mypaths [
-             if  item 1 ? > step-count [
-               set myheading  item 0 ?
-               set step-count  item 1 ?
-               if item 1 ? > 23 [
-                 set blue-sky-steps 20
-               
-               ]
-             ]
-           ]
-           if myheading != heading [
-             ;; altering course, this is a breadcrumb
-             set pcolor red
-             set heading myheading
-             show-planned-path blue-sky-steps
-           ]
+           let myheading bestheading-path mypaths
+           set breadcrumbs add-breadcrumb myheading src dst breadcrumbs
          ]
          
-         
          forward 1
-         
        ]
        
-       
+       ;; optimize the list
+       let index 4
+       while [index + 2 < length breadcrumbs] [
+         set breadcrumbs optimize-breadcrumbs breadcrumbs index  ;; start at 5th item, first four are not points
+         set index index + 1
+       ]
+       die
   ]  
   
-  ;; calculate destinations
-  ;; save destinations in list
+  set breadcrumb-trails lput breadcrumbs breadcrumb-trails
   
+end   ;; create-breadcrumbs
+
+to-report optimize-breadcrumbs [breadcrumbs index]
   
+  if index + 2 < length breadcrumbs [
+    
+    let pt1 item index breadcrumbs
+    let pt2 item (index + 2) breadcrumbs
+    
+    if path-clear pt1 pt2 = true [
+      ;; remove the point that is not needed, recurse deeper in.
+      set breadcrumbs remove-item (index + 1) breadcrumbs
+      set breadcrumbs optimize-breadcrumbs breadcrumbs index
+    ]
+    
+  ]
+
+  report breadcrumbs
 end
+
+to-report path-clear [pt1 pt2]
+  let isclear true
+  ;; move our guy to the first breadcrumb
+  setxy  item 0 pt1 item 1 pt1
+  let dist distancexy  item 0 pt2 item 1 pt2
+  let step-counter 1                              ;; count steps along the path that is being examined
+  
+  
+  ;; if (not is-allowed-patch patch-ahead step-counter 2 allowedpatches)
+  while [step-counter < dist + 5 and isclear = true] [
+    if  patch-ahead step-counter = pt2 [stop]
+    set step-counter step-counter + 1
+    if (not is-allowed-patch patch-ahead step-counter 2 allowed-patches) [
+      set isclear false
+    ]
+  ]
+
+  ;; diagnostic
+  if isclear = true and 1 = 0 [
+    pen-down
+    set color blue
+    move-to patch item 0 pt2 item 1 pt2
+  ]
+
+  report isclear
+end
+
+to create-temp-worker [src dst bold danger-harms]
+  create-workers 1 [
+      move-to one-of patches with [building-number = src]
+      init-worker red red (list dst) src 1 1 1
+      ifelse bold = 1 [
+        set-worker-bold red danger-harms
+      ][
+        set-worker-avoider red
+      ]
+  ]
+end
+
+to-report bestheading-path [mypaths]
+   let myheading  heading
+   let step-count  0
+   foreach mypaths [
+     if  item 1 ? > step-count [
+       set myheading  item 0 ?
+       set step-count  item 1 ?
+       if item 1 ? > 23 [
+         set blue-sky-steps 20
+       
+       ]
+     ]
+   ]
+   report myheading
+end
+
+to-report add-breadcrumb [newheading src dst breadcrumbs]
+   ;; see if this is sa breadcrumb
+   if newheading != heading and building-number != src and building-number != dst [
+     ;; altering course, this is a breadcrumb
+     set breadcrumbs lput (list pxcor pycor) breadcrumbs
+     set heading newheading
+   ]
+   report breadcrumbs
+end
+
 
 ;; helper function - sketch the path we plan to follow
 to show-planned-path [steps]
@@ -143,7 +210,7 @@ to set-direction [little-dude]
 
   ]
 
-end
+end  ;; set-direction
 
 
 

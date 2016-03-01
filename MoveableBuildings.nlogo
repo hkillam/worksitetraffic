@@ -1,5 +1,5 @@
 extensions [csv  bitmap]
-__includes ["worldview.nls" "building-code.nls" "navigation.nls" ]
+__includes ["worldview.nls" "building-code.nls" "navigation.nls" "workers.nls" ]
 
 
 globals [
@@ -17,40 +17,17 @@ globals [
 ]
 
 
-breed [ workers ]
-
-
-
-workers-own [
-  searching?            ;; 1 if going to the materials, 0 if returning\
-  energy                ;; start at tick-count, at zero just quit
-  allowed-patches       ;; colours of patches this guy can step on - will replace "losest-road"
-  avoid-mud?            ;; 1 to go around mud, 0 to go through it
-  trips-completed       ;; number of round-trip journies
-  home-building         ;; place this worker starts out
-  destination-building  ;; number of the building they are currently heading to
-  goal                  ;; random space within the building they are heading to
-  previous-patch        ;; last place this dude was standing
-  dice-tossed?          ;; for people in the danger zone, toss the dice once per trip
-  no-energy-tick        ;; the tick count when this worker runs out of energy (group 2 - tired in mud)
-  go-right?             ;; true if this turtle looks to the right for an open route.  set this when the goal is set
-  hugging-edges-steps   ;; if the turtle starts hugging the edge, this is how many more steps to do it for
-  blue-sky-steps        ;; if we are wandering in open spaces, take a few steps before re-calculating
-  slow-in-mud?          ;; from the input file - how is the worker affected by mud
-  tired-in-mud?         ;; from the input file - how is the worker affected by mud
-  risk-danger?          ;; from the input file - how is the worker affected by mud
-  working-ticks         ;; count down how long a worker stays in a work building
-]
-
-
 to setup ; linked with setup button on interface
   clear-all
   set-default-shape turtles "person"
+  set breadcrumb-trails []
   setup-patches "moveablebuildings.bmp" "colours.csv"
   set building-list csv:from-file "buildings.csv"
   make-buildings-from-list
 
-  create-breadcrumbs 18 14
+  create-breadcrumbs 18 14 0 0
+  create-breadcrumbs 15 14 0 0
+  create-breadcrumbs 18 15 0 0
 
   setup-workers
 
@@ -159,12 +136,12 @@ to set-new-destination [new-dest new-searching add-trip ]
 end
 
 to-report possible-path-list [little-dude]
-    let path-list []
-    ;; set path-list lput (list dx dy) path-list
-    ;; we are already hugging an edge, keep doing that.
-    if hugging-edges-steps > 0 [
-      report path-list
-    ]
+  let path-list []
+  ;; set path-list lput (list dx dy) path-list
+  ;; we are already hugging an edge, keep doing that.
+  if hugging-edges-steps > 0 [
+    report path-list
+  ]
 
 
   let all-clear true
@@ -175,7 +152,7 @@ to-report possible-path-list [little-dude]
 
   no-display
 
-  let step-counter 1
+  let step-counter 1                              ;; count steps along the path that is being examined
   let steps-to-check random (25) + 150            ;; a little variety in how far ahead we look
   let totalangle  0
   let goingright  [go-right?] of little-dude
@@ -200,7 +177,8 @@ to-report possible-path-list [little-dude]
       let nextpatch [pcolor] of patch-ahead step-counter
 
       ;; see if we hit the end of the open path
-      if (not member? nextpatch  allowedpatches)
+      if (not is-allowed-patch patch-ahead step-counter 2 allowedpatches)  ;; make a buffer
+      ;;if (not member? nextpatch  allowedpatches)                         ;; only check the patch
       [
 
         ;; report the path
@@ -233,6 +211,20 @@ to-report possible-path-list [little-dude]
   report path-list
 end
 
+;; when checking if the next patch is a permitted colour, this function lets you check around the patch too
+;; this is really messing things up.
+to-report is-allowed-patch [thepatch theradius clrlist]
+  let permitted true
+  ask thepatch [
+    ask patches in-radius theradius [
+
+      if not member? pcolor clrlist [
+        set permitted false
+      ]
+    ]
+  ]
+  report permitted
+end
 
 to face-longest-path [little-dude path-list]
 
@@ -383,81 +375,9 @@ end
 
 
 
-to setup-workers
-
-  foreach building-list [
-    let buildnum  item 0 ?
-    if buildnum != "facility" [
-      let buildname  item 1 ?
-      let numworkers  item 6 ?
-      let dest item 7 ?
-
-      ;; how does mud/danger affect workers from this building?
-      let mud-slows item 8 ?
-      let mud-tires item 9 ?
-      let danger-harms item 10 ?
-
-      ;; currently, this only works for two destinations.  need to loop for more than two
-      ifelse (member? "," (word dest)) [
-        let comma position "," dest
-        let desta read-from-string substring dest 0 comma
-        let destb read-from-string substring dest (comma + 1) (length dest)
-        set dest list desta destb
-      ]  [
-        set dest (list dest)
-      ]
-
-      create-workers numworkers [
-        move-to one-of patches with [building-number = buildnum]
-        let color1 95
-        let color2 85
-        if (buildnum = 14) [ set color1 orange set color2 yellow ]
-        if (buildnum = 18) [ set color1 95 set color2 85 ]
-        if (buildnum = 15) [ set color1 115 set color2 125  ]
-        init-worker color1 color2 dest buildnum mud-slows mud-tires danger-harms
-      ]
-    ]
-  ]
-
-end
 
 
 
-
-
-to init-worker [  colorA colorB dest-buildings home-plate mud-slows mud-tires danger-harms]
-      let dest one-of dest-buildings
-      set home-building home-plate
-      set destination-building dest
-      set size 1
-      set color colorB
-      set breed workers
-      let mylist (list clr-path clr-road clr-moveable-facility)
-      set trips-completed 0
-      set energy total-ticks
-      set avoid-mud? one-of [0 1]
-      set allowed-patches (list clr-path clr-road clr-moveable-facility blue)
-      if avoid-mud? = 0
-      [  set allowed-patches lput clr-mud allowed-patches
-         set color colorA
-         if danger-harms = 1 [
-           set allowed-patches lput clr-danger allowed-patches
-         ]
-      ]
-
-      ;; new requirement in December - let the main building be a possible destination.
-      if dest = 1 [
-           set allowed-patches lput clr-fixed-facility allowed-patches
-      ]
-
-      set no-energy-tick 0
-
-      set-new-destination dest 1 0
-      set blue-sky-steps 0
-      set slow-in-mud? mud-slows
-      set tired-in-mud? mud-tires
-      set risk-danger? danger-harms
-end
 @#$#@#$#@
 GRAPHICS-WINDOW
 214

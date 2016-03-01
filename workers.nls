@@ -1,0 +1,112 @@
+breed [ workers ]
+
+
+
+workers-own [
+  searching?            ;; 1 if going to the materials, 0 if returning\
+  energy                ;; start at tick-count, at zero just quit
+  allowed-patches       ;; colours of patches this guy can step on - will replace "losest-road"
+  avoid-mud?            ;; 1 to go around mud, 0 to go through it
+  trips-completed       ;; number of round-trip journies
+  home-building         ;; place this worker starts out
+  destination-building  ;; number of the building they are currently heading to
+  goal                  ;; random space within the building they are heading to
+  previous-patch        ;; last place this dude was standing
+  dice-tossed?          ;; for people in the danger zone, toss the dice once per trip
+  no-energy-tick        ;; the tick count when this worker runs out of energy (group 2 - tired in mud)
+  go-right?             ;; true if this turtle looks to the right for an open route.  set this when the goal is set
+  hugging-edges-steps   ;; if the turtle starts hugging the edge, this is how many more steps to do it for
+  blue-sky-steps        ;; if we are wandering in open spaces, take a few steps before re-calculating
+  slow-in-mud?          ;; from the input file - how is the worker affected by mud
+  tired-in-mud?         ;; from the input file - how is the worker affected by mud
+  risk-danger?          ;; from the input file - how is the worker affected by mud
+  working-ticks         ;; count down how long a worker stays in a work building
+]
+
+
+to init-worker [  colorA colorB dest-buildings home-plate mud-slows mud-tires danger-harms]
+      let dest one-of dest-buildings
+      set home-building home-plate
+      set destination-building dest
+      set size 1
+      set breed workers
+      set trips-completed 0
+      set energy total-ticks
+      set avoid-mud? one-of [0 1]
+      ifelse avoid-mud? = 0
+      [  
+         set-worker-bold colorA danger-harms
+      ][
+         set-worker-avoider colorB
+      ]
+
+      ;; new requirement in December - let the main building be a possible destination.
+      if dest = 1 [
+           set allowed-patches lput clr-fixed-facility allowed-patches
+      ]
+
+      set no-energy-tick 0
+
+      set-new-destination dest 1 0
+      set blue-sky-steps 0
+      set slow-in-mud? mud-slows
+      set tired-in-mud? mud-tires
+      set risk-danger? danger-harms
+end
+
+to set-worker-bold [colorA danger-harms]
+   set allowed-patches (list clr-path clr-road clr-moveable-facility red )   ;; add red for testinng breadcrumbs
+   set allowed-patches lput clr-mud allowed-patches
+   set color colorA
+   if danger-harms = 1 [
+     set allowed-patches lput clr-danger allowed-patches
+   ]
+end
+
+to set-worker-avoider [colorB]
+  set allowed-patches (list clr-path clr-road clr-moveable-facility  red )
+  set color colorB
+end
+
+
+to setup-workers
+
+  foreach building-list [
+    let buildnum  item 0 ?
+    if buildnum != "facility" [
+      let buildname  item 1 ?
+      let numworkers  item 6 ?
+      let dest item 7 ?
+
+      ;; how does mud/danger affect workers from this building?
+      let mud-slows item 8 ?
+      let mud-tires item 9 ?
+      let danger-harms item 10 ?
+
+      ;; currently, this only works for two destinations.  need to loop for more than two
+      ifelse (member? "," (word dest)) [
+        let comma position "," dest
+        let desta read-from-string substring dest 0 comma
+        let destb read-from-string substring dest (comma + 1) (length dest)
+        set dest list desta destb
+      ]  [
+        set dest (list dest)
+      ]
+
+      create-workers numworkers [
+        move-to one-of patches with [building-number = buildnum]
+        let color1 95
+        let color2 85
+        if (buildnum = 14) [ set color1 orange set color2 yellow ]
+        if (buildnum = 18) [ set color1 95 set color2 85 ]
+        if (buildnum = 15) [ set color1 115 set color2 125  ]
+        init-worker color1 color2 dest buildnum mud-slows mud-tires danger-harms
+      ]
+    ]
+  ]
+
+end
+
+
+
+
