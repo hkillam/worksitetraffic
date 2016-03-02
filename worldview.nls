@@ -64,6 +64,7 @@ to setup-patches [mapfile colorfile]
   ;; read image
   let mapcolors (list clr-path clr-road clr-mud clr-danger clr-moveable-facility clr-fixed-facility clr-fixed-facility2 clr-void)
   bitmap:copy-to-pcolors (bitmap:import mapfile) true
+  
 
   ;; adjust patch colours to match our list
   let extracolors (list -1)

@@ -21,6 +21,21 @@ to-report building-stats [building-num]
     report (list building-num bx1 by1 bwid blen avoiders bold avoiders-trips bold-trips avoiders-triptime bold-triptime napper-trips)
 end
 
+to-report center-of-building [building-num]
+;; another option is nearest block in building    
+;; min-one-of patches with [ building-number = [destination-building] of myself ] [ distance myself ]
+    let bx1 min [pxcor] of patches with [building-number = building-num]
+    let by1 min [pycor] of patches with [building-number = building-num]
+    let bx2 max [pxcor] of patches with [building-number = building-num]
+    let by2 max [pycor] of patches with [building-number = building-num]
+    let bxcenter mean list bx1 bx2
+    let bycenter mean list by1 by2
+    
+    report patch bxcenter bycenter
+  
+  
+end
+
 to-report mouse-clicked?
   report (mouse-was-down? = true and not mouse-down?)
 end

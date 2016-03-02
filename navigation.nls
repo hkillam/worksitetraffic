@@ -35,7 +35,7 @@ to create-breadcrumbs [src dst bold danger-harms]
        ;; optimize the list
        let index 4
        while [index + 2 < length breadcrumbs] [
-         set breadcrumbs optimize-breadcrumbs breadcrumbs index  ;; start at 5th item, first four are not points
+         ;;set breadcrumbs optimize-breadcrumbs breadcrumbs index  ;; start at 5th item, first four are not points
          set index index + 1
        ]
        die
@@ -95,7 +95,7 @@ to-report path-clear [pt1 pt2]
   while [step-counter < dist + 5 and isclear = true] [
     if  patch-ahead step-counter = pt2 [stop]
     set step-counter step-counter + 1
-    if (not is-allowed-patch patch-ahead step-counter 2 allowed-patches) [
+    if (not is-allowed-patch patch-ahead step-counter 2) [
       set isclear false
     ]
   ]
@@ -125,6 +125,8 @@ to create-temp-worker [src dst bold danger-harms]
 end
 
 to-report bestheading-path [mypaths]
+  
+   if length mypaths < 1 [ show "no path" ]
    let myheading  heading
    let step-count  0
    foreach mypaths [

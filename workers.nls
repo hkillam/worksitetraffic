@@ -40,10 +40,6 @@ to init-worker [  colorA colorB dest-buildings home-plate mud-slows mud-tires da
          set-worker-avoider colorB
       ]
 
-      ;; new requirement in December - let the main building be a possible destination.
-      if dest = 1 [
-           set allowed-patches lput clr-fixed-facility allowed-patches
-      ]
 
       set no-energy-tick 0
 
@@ -61,11 +57,19 @@ to set-worker-bold [colorA danger-harms]
    if danger-harms = 1 [
      set allowed-patches lput clr-danger allowed-patches
    ]
+    ;; new requirement in December - let the main building be a possible destination.
+    if destination-building = 1 [
+         set allowed-patches lput clr-fixed-facility allowed-patches
+    ]
 end
 
 to set-worker-avoider [colorB]
   set allowed-patches (list clr-path clr-road clr-moveable-facility  red )
   set color colorB
+  ;; new requirement in December - let the main building be a possible destination.
+  if destination-building = 1 [
+       set allowed-patches lput clr-fixed-facility allowed-patches
+  ]
 end
 
 

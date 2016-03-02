@@ -25,14 +25,17 @@ to setup ; linked with setup button on interface
   set building-list csv:from-file "buildings.csv"
   make-buildings-from-list
 
-  create-breadcrumbs 18 14 0 0
-  create-breadcrumbs 15 14 0 0
-  create-breadcrumbs 18 15 0 0
+  create-breadcrumbs 14 1 0 0    ;; currently a difficult path, because there is only a tiny access point to 1.
+;;  create-breadcrumbs 18 14 0 0
+ ;; create-breadcrumbs 15 14 0 0
+;;  create-breadcrumbs 18 15 0 0
 
   ;; diagnostic - show the breadcrumb trails for a moment.
-  draw-breadcrumb-trail 0
-  draw-breadcrumb-trail  1
-  draw-breadcrumb-trail  2
+  ;; note that these trails are invisible to the workers, and do not affect worker movement.
+;;  draw-breadcrumb-trail 3
+;;  draw-breadcrumb-trail  1
+;;  draw-breadcrumb-trail  2
+  draw-breadcrumb-trail  0
 
   setup-workers
 
@@ -99,6 +102,7 @@ to write-results
   ]
   csv:to-file "results.csv" myout
 
+  ask workers [ die ]  ;; we don't want them to show in the bitmap
   bitmap:export bitmap:from-view "results-bitmap.bmp"
 
 end
@@ -122,8 +126,10 @@ end
 ;; arrive at destination
 ;; buildings move
 to set-new-destination [new-dest new-searching add-trip ]
-      set goal one-of patches with [building-number = new-dest]
+     ;; set goal one-of patches with [building-number = new-dest]  ;; random patch in a building gives nice distribution, but a lot of edge cases.
+      set goal center-of-building new-dest
       face goal
+      ask goal [ set pcolor red ]
       set searching?  new-searching
       set trips-completed trips-completed + add-trip
       set previous-patch patch 0 0
@@ -142,72 +148,62 @@ end
 
 to-report possible-path-list [little-dude]
   let path-list []
-  ;; set path-list lput (list dx dy) path-list
-  ;; we are already hugging an edge, keep doing that.
+
+  ;; if we are already hugging an edge, keep doing that.
   if hugging-edges-steps > 0 [
     report path-list
   ]
 
-
-  let all-clear true
   let currentheading [heading] of little-dude
+  no-display
 
   ;; site the goal, adjust direction toward it.
   set heading towards-nowrap goal
+  ;;face min-one-of patches with [ building-number = [destination-building] of myself ] [ distance myself ]
 
-  no-display
+  ;; testing
+  ;;ifelse pxcor > 64 and pxcor < 80 [ pen-down display set color red][ pen-up ]
 
-  let step-counter 1                              ;; count steps along the path that is being examined
   let steps-to-check random (25) + 150            ;; a little variety in how far ahead we look
   let totalangle  0
   let goingright  [go-right?] of little-dude
-  let allowedpatches [allowed-patches] of little-dude
 
-  while [step-counter < steps-to-check and totalangle < 160]
+  while [totalangle < 160]
   [
+      let path-info []
+      ifelse heading = towards-nowrap goal
+      [ set path-info test-path 1000 ]
+      [ set path-info test-path steps-to-check ]
 
-
-      ;; we are facing a clear path to the destination, only report this path
-      if [building-number] of  patch-ahead step-counter  = [ destination-building ] of little-dude
-      [
-        set hugging-edges-steps 0
-        set path-list []  ;; throw out any other values
-        set path-list lput (list heading step-counter) path-list
-        set blue-sky-steps step-counter + 3
-        display
-        report path-list
-      ]
-
-      ;; what is the colour of the next patch in the path we are checking?
-      let nextpatch [pcolor] of patch-ahead step-counter
-
-      ;; see if we hit the end of the open path
-      if (not is-allowed-patch patch-ahead step-counter 2 allowedpatches)  ;; make a buffer
-      ;;if (not member? nextpatch  allowedpatches)                         ;; only check the patch
-      [
-
-        ;; report the path
-        if step-counter > 1 [
-          set path-list lput (list heading step-counter) path-list
+      if length path-info > 1 [
+        ;; is this direct to destination?
+        if item 2 path-info = true [
+          set hugging-edges-steps 0
+          set blue-sky-steps item 0 path-info + 3
+          set path-list []  ;; throw out any other paths
+          set path-list lput (list heading item 0 path-info) path-list
+          set totalangle 180 ;; breaks the loop
         ]
 
-        ;; and moving on
-        let newangle random (5) + 3               ;; turn between 3 and 8 degrees
-        set totalangle (totalangle + newangle)  ;; increase the angle a little
-        ifelse (goingright = true) [
-          right newangle
-        ][
-          left newangle
+        ;; path ahead is clear, this is the only path we need to consider
+        if item 1 path-info = true [
+          set path-list []  ;; throw out any other paths
+          set path-list lput (list heading item 0 path-info) path-list
+          set totalangle 180 ;; breaks the loop
         ]
-        set step-counter 0
+
+
+        set path-list lput (list heading item 0 path-info) path-list
       ]
 
-      set step-counter step-counter + 1
-  ]
-
-  ;; path ahead is clear for a while, and we fell out of the loop, so this is the only path we need to consider
-  if step-counter > 0 and length path-list = 0 [
-    set path-list lput (list heading step-counter) path-list
+      ;; next angle
+      let newangle random (5) + 3               ;; turn between 3 and 8 degrees
+      set totalangle (totalangle + newangle)  ;; increase the angle a little
+      ifelse (goingright = true) [
+        right newangle
+      ][
+        left newangle
+      ]
   ]
 
 
@@ -216,16 +212,67 @@ to-report possible-path-list [little-dude]
   report path-list
 end
 
-;; when checking if the next patch is a permitted colour, this function lets you check around the patch too
-;; this is really messing things up.
-to-report is-allowed-patch [thepatch theradius clrlist]
-  let permitted true
-  ask thepatch [
-    ask patches in-radius theradius [
 
-      if not member? pcolor clrlist [
-        set permitted false
+;;  test-path
+;;  test for length of clear path, and if destination is on this path
+;;
+;;  returns list of [path-length all-clear dest-ahead]
+;;  path-length will be the length of clear path, up to a max of the input max-steps
+;;  all clear means the path never found an obsticle.
+;;  dest-ahead means we are pointed the right way, path-length will show distance to destination.
+to-report test-path [max-steps]
+
+  let step-counter 0
+
+    ;; testing
+  ;;if pxcor > 72 and pxcor < 76 and max-steps = 1000 [  show "turned towards it" ]
+
+  while [step-counter < max-steps] [
+    set step-counter step-counter + 1
+
+    ;; is the destination ahead?
+    if [building-number] of  patch-ahead step-counter  = destination-building
+    [
+      ;;if pxcor > 72 and pxcor < 76 and max-steps = 1000 [  show (word "looking right at it " pxcor pycor) ]
+      report (list step-counter true true)
+    ]
+
+    ;; what is the colour of the next patch in the path we are checking?
+    let nextpatch [pcolor] of patch-ahead step-counter
+
+    ;; see if we hit the end of the open path
+    if (not is-allowed-patch patch-ahead step-counter 2 )
+    [
+      if step-counter = 1 [ report (list ) ]  ;  totally dead end, don't return this path at all
+      if pxcor > 72 and pxcor < 76 and max-steps = 1000 and 0 = 1 [
+        show (word "something in the way. heading: " heading " steps: " step-counter " pcolor: " [pcolor] of patch-ahead step-counter)
+        ask patch-ahead step-counter [
+          ask patches in-radius 2 [       show (word "neighbour is " pcolor)         ]
+        ]
+
       ]
+      report (list step-counter false false)
+    ]
+  ]
+
+  ;; we checked far enough, didn't encounter obsticles or destination
+  report (list step-counter true false)
+end
+
+;; when checking if the next patch is a permitted colour, this function lets you check the buffer as well
+;;
+to-report is-allowed-patch [thepatch theradius]
+  let permitted true
+  let allowedpatchclrs allowed-patches
+
+  ifelse theradius <= 1 [
+    if (not member? pcolor  allowedpatchclrs) [ set permitted false ]
+  ][
+    ask thepatch [
+       ask patches in-radius theradius [
+
+         if not member? pcolor allowedpatchclrs [ set permitted false ]
+       ]
     ]
   ]
   report permitted
