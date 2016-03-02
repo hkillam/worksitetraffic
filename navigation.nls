@@ -30,6 +30,7 @@ to create-breadcrumbs [src dst bold danger-harms]
          
          forward 1
        ]
+       set breadcrumbs lput (list pxcor pycor) breadcrumbs
        
        ;; optimize the list
        let index 4
@@ -60,6 +61,26 @@ to-report optimize-breadcrumbs [breadcrumbs index]
   ]
 
   report breadcrumbs
+end
+
+to draw-breadcrumb-trail [ndx]
+  let path item ndx breadcrumb-trails
+  create-temp-worker 1 1 1 1
+  
+  let pt1 item 4 path
+  ask workers [
+    set color ndx * 10 + 5
+    setxy  item 0 pt1 item 1 pt1
+    pen-down
+  ]
+  
+  foreach path [
+    if is-list? ? [
+      ask workers [ move-to patch item 0 ? item 1 ? ]
+    ]
+  ]
+  
+  ask workers [ die ]
 end
 
 to-report path-clear [pt1 pt2]
@@ -93,10 +114,12 @@ to create-temp-worker [src dst bold danger-harms]
   create-workers 1 [
       move-to one-of patches with [building-number = src]
       init-worker red red (list dst) src 1 1 1
+      set shape "arrow"
+      set size 3
       ifelse bold = 1 [
         set-worker-bold red danger-harms
       ][
-        set-worker-avoider red
+        set-worker-avoider green
       ]
   ]
 end

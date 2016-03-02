@@ -29,6 +29,11 @@ to setup ; linked with setup button on interface
   create-breadcrumbs 15 14 0 0
   create-breadcrumbs 18 15 0 0
 
+  ;; diagnostic - show the breadcrumb trails for a moment.
+  draw-breadcrumb-trail 0
+  draw-breadcrumb-trail  1
+  draw-breadcrumb-trail  2
+
   setup-workers
 
 
@@ -372,7 +377,6 @@ to check-goal  ;; worker procedure - if they have reached the goal, set a new on
     set-new-destination  destination-building 1 1
   ]
 end
-
 
 
 
