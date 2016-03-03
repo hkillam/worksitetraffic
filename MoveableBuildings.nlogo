@@ -126,10 +126,9 @@ end
 ;; arrive at destination
 ;; buildings move
 to set-new-destination [new-dest new-searching add-trip ]
-     ;; set goal one-of patches with [building-number = new-dest]  ;; random patch in a building gives nice distribution, but a lot of edge cases.
-      set goal center-of-building new-dest
+      set goal one-of patches with [building-number = new-dest]
+      ;;set goal center-of-building new-dest  ;; slow!
       face goal
-      ask goal [ set pcolor red ]
       set searching?  new-searching
       set trips-completed trips-completed + add-trip
       set previous-patch patch 0 0
@@ -146,7 +145,7 @@ to set-new-destination [new-dest new-searching add-trip ]
       ]
 end
 
-to-report possible-path-list [little-dude]
+to-report possible-path-list [little-dude theradius show-test-msgs]
   let path-list []
 
   ;; if we are already hugging an edge, keep doing that.
@@ -155,7 +154,7 @@ to-report possible-path-list [little-dude]
   ]
 
   let currentheading [heading] of little-dude
-  no-display
+;;  no-display
 
   ;; site the goal, adjust direction toward it.
   set heading towards-nowrap goal
@@ -168,13 +167,31 @@ to-report possible-path-list [little-dude]
   let totalangle  0
   let goingright  [go-right?] of little-dude
 
-  while [totalangle < 160]
-  [
-      let path-info []
-      ifelse heading = towards-nowrap goal
-      [ set path-info test-path 1000 ]
-      [ set path-info test-path steps-to-check ]
 
+;; changing this angle will keep most dudes from hopping back and forth in a small space
+;; 200 degrees failed on 27th attempt
+;; 210 degrees failed on 49
+  while [totalangle < 210]
+  [
+
+      let path-info []
+      if show-test-msgs [
+        show heading
+        hatch 1 [
+          set size 0.01
+          pen-down fd 15
+          wait 1
+          pen-erase bk 15
+          die
+        ]
+      ]
+      ifelse heading = towards-nowrap goal
+      [ set path-info test-path 1000 theradius]
+      [ set path-info test-path steps-to-check theradius]
+
+if show-test-msgs [
+  show path-info
+]
       if length path-info > 1 [
         ;; is this direct to destination?
         if item 2 path-info = true [
@@ -182,14 +199,14 @@ to-report possible-path-list [little-dude]
           set blue-sky-steps item 0 path-info + 3
           set path-list []  ;; throw out any other paths
           set path-list lput (list heading item 0 path-info) path-list
-          set totalangle 180 ;; breaks the loop
+          set totalangle 350 ;; breaks the loop
         ]
 
         ;; path ahead is clear, this is the only path we need to consider
         if item 1 path-info = true [
           set path-list []  ;; throw out any other paths
           set path-list lput (list heading item 0 path-info) path-list
-          set totalangle 180 ;; breaks the loop
+          set totalangle 350 ;; breaks the loop
         ]
 
 
@@ -220,7 +237,7 @@ end
 ;;  path-length will be the length of clear path, up to a max of the input max-steps
 ;;  all clear means the path never found an obsticle.
 ;;  dest-ahead means we are pointed the right way, path-length will show distance to destination.
-to-report test-path [max-steps]
+to-report test-path [max-steps theradius]
 
   let step-counter 0
 
@@ -241,16 +258,11 @@ to-report test-path [max-steps]
     let nextpatch [pcolor] of patch-ahead step-counter
 
     ;; see if we hit the end of the open path
-    if (not is-allowed-patch patch-ahead step-counter 2 )
+    if (not is-allowed-patch patch-ahead step-counter theradius )
     [
-      if step-counter = 1 [ report (list ) ]  ;  totally dead end, don't return this path at all
-      if pxcor > 72 and pxcor < 76 and max-steps = 1000 and 0 = 1 [
-        show (word "something in the way. heading: " heading " steps: " step-counter " pcolor: " [pcolor] of patch-ahead step-counter)
-        ask patch-ahead step-counter [
-          ask patches in-radius 2 [       show (word "neighbour is " pcolor)         ]
-        ]
-
-      ]
+      if step-counter = 1 [
+        report (list 0 false false)
+      ]  ;  totally dead end, don't return this path at all
       report (list step-counter false false)
     ]
   ]
@@ -339,6 +351,7 @@ to move-worker [little-dude]
 
          if energy < 1
          [ set color black
+           move-to center-of-building 1  ;; get out of the way, but don't die and lose the info
            stop
          ]
 
@@ -424,9 +437,6 @@ to check-goal  ;; worker procedure - if they have reached the goal, set a new on
     set-new-destination  destination-building 1 1
   ]
 end
-
-
-
 
 
 @#$#@#$#@

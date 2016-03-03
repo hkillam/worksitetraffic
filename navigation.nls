@@ -2,7 +2,7 @@
 ;; call this function before workers are created
 to create-breadcrumbs [src dst bold danger-harms]
   let breadcrumbs []
-  
+  let show-test-msgs false
   
   set breadcrumbs lput src breadcrumbs
   set breadcrumbs lput dst breadcrumbs
@@ -13,35 +13,58 @@ to create-breadcrumbs [src dst bold danger-harms]
   
   ask workers
   [
-       while [[building-number] of patch-ahead 1 != dst] [
+       while [[building-number] of patch-ahead 1 != dst and length breadcrumbs < 1000] [
          
-         ;; get list of all possible paths
-         let mypaths possible-path-list self
-         
-         ifelse length mypaths = 0 [
-           ;; there are no paths, hug the edges.
-           set hugging-edges-steps 10;
-           show "trapped";
-           stop 
-         ][
-           let myheading bestheading-path mypaths
-           set breadcrumbs add-breadcrumb myheading src dst breadcrumbs
+         let mypaths []
+         if hugging-edges-steps < 1 [
+           ;; get list of all possible paths
+           set  mypaths possible-path-list self 2 false
+           if length mypaths = 0 [ 
+             set mypaths possible-path-list self 0 false
+             show  ( word "skinny path " pxcor " " pycor " " go-right?) 
+           ]  ;; if there aren't good paths with some buffer, try again with no buffer
          ]
          
-         forward 1
+         if length mypaths = 0 and hugging-edges-steps < 1
+         [ show (word "SOS" pxcor pycor)
+           set hugging-edges-steps 9 ] 
+         
+         
+         ifelse hugging-edges-steps > 0[
+           ;; there are no paths, hug the edges.
+           set hugging-edges-steps hugging-edges-steps - 1
+           let ret turn-along-edge  
+           show hugging-edges-steps 
+         ][
+           let myheading bestheading-path mypaths
+           if heading != myheading [
+              set heading myheading
+              set breadcrumbs add-breadcrumb myheading src dst breadcrumbs
+           ]
+         ]
+         
+         let nextpatchcolor [pcolor] of patch-ahead 1
+         ifelse (not member? nextpatchcolor  allowed-patches) 
+         [ show (word "we shouldn't be doing this " heading) ]
+         [ forward 1 ]
        ]
-       set breadcrumbs lput (list pxcor pycor) breadcrumbs
+       set breadcrumbs lput (list pxcor pycor) breadcrumbs  ;; add final point to the list
+
        
        ;; optimize the list
-       let index 4
-       while [index + 2 < length breadcrumbs] [
-         ;;set breadcrumbs optimize-breadcrumbs breadcrumbs index  ;; start at 5th item, first four are not points
-         set index index + 1
+       if length breadcrumbs < 1000 [
+         let index 4
+         while [index + 2 < length breadcrumbs] [
+           set breadcrumbs optimize-breadcrumbs breadcrumbs index  ;; start at 5th item, first four are not points
+           set index index + 1
+         ] 
        ]
        die
   ]  
   
-  set breadcrumb-trails lput breadcrumbs breadcrumb-trails
+  if length breadcrumbs < 1000 [
+     set breadcrumb-trails lput breadcrumbs breadcrumb-trails
+  ]
   
 end   ;; create-breadcrumbs
 
@@ -64,29 +87,36 @@ to-report optimize-breadcrumbs [breadcrumbs index]
 end
 
 to draw-breadcrumb-trail [ndx]
-  let path item ndx breadcrumb-trails
-  create-temp-worker 1 1 1 1
   
-  let pt1 item 4 path
-  ask workers [
-    set color ndx * 10 + 5
-    setxy  item 0 pt1 item 1 pt1
-    pen-down
-  ]
-  
-  foreach path [
-    if is-list? ? [
-      ask workers [ move-to patch item 0 ? item 1 ? ]
+  if length breadcrumb-trails > ndx [
+    let path item ndx breadcrumb-trails
+    create-temp-worker 1 1 1 1
+    
+    if length path > 4 [
+      
+      let pt1 item 4 path
+      ask workers [ 
+        set color ndx * 10 + 5
+        setxy  item 0 pt1 item 1 pt1
+        pen-down 
+      ]
+      
+      foreach path [
+        if is-list? ? [
+          ask workers [ move-to patch item 0 ? item 1 ?  ]
+        ]
+      ]
     ]
+    
+    ask workers [ die ]
   ]
-  
-  ask workers [ die ]
-end
+  end
 
 to-report path-clear [pt1 pt2]
-  let isclear true
-  ;; move our guy to the first breadcrumb
+  let isclear true 
+  ;; move our guy to the first breadcrumb, and look at the next
   setxy  item 0 pt1 item 1 pt1
+  face patch item 0 pt2 item 1 pt2
   let dist distancexy  item 0 pt2 item 1 pt2
   let step-counter 1                              ;; count steps along the path that is being examined
   
@@ -100,7 +130,7 @@ to-report path-clear [pt1 pt2]
     ]
   ]
 
-  ;; diagnostic
+  ;; diagnostic 
   if isclear = true and 1 = 0 [
     pen-down
     set color blue
@@ -126,14 +156,14 @@ end
 
 to-report bestheading-path [mypaths]
   
-   if length mypaths < 1 [ show "no path" ]
+   if length mypaths < 1 [ show (word "no path " pxcor " " pycor) ]
    let myheading  heading
    let step-count  0
    foreach mypaths [
      if  item 1 ? > step-count [
        set myheading  item 0 ?
        set step-count  item 1 ?
-       if item 1 ? > 23 [
+       if item 1 ? > 23 [ 
          set blue-sky-steps 20
        
        ]
@@ -144,11 +174,11 @@ end
 
 to-report add-breadcrumb [newheading src dst breadcrumbs]
    ;; see if this is sa breadcrumb
-   if newheading != heading and building-number != src and building-number != dst [
+;;   ifelse newheading != heading and building-number != src and building-number != dst [
      ;; altering course, this is a breadcrumb
      set breadcrumbs lput (list pxcor pycor) breadcrumbs
      set heading newheading
-   ]
+;;   ][ show "no change in heading" ]
    report breadcrumbs
 end
 
@@ -186,7 +216,8 @@ to set-direction [little-dude]
   ;; we are not hugging an edge, check around for a good path.
   if hugging-edges-steps < 1 [
       ifelse blue-sky-steps < 1 [
-         let mypaths possible-path-list little-dude
+         let mypaths possible-path-list little-dude  2 false
+         if length mypaths = 0 [ set mypaths possible-path-list little-dude 0 false ]  ;; if there aren't good paths with some buffer, try again with no buffer
          face-longest-path little-dude mypaths
       ][
          set blue-sky-steps  blue-sky-steps - 1  ;; stay on the current course for a few steps
@@ -201,6 +232,7 @@ to set-direction [little-dude]
 
       ask little-dude [
          set heading  currentheading
+         show heading
       ]
 
 
@@ -211,22 +243,9 @@ to set-direction [little-dude]
       ;;ifelse (go-right? = true) [ left 45 ][ right 45 ]
 
       ;; creep the edge.  If you can't step forward, look right.  Only look one step ahead; eventually we will creep out to open space.
-      set nextpatch [pcolor] of patch-ahead 1
-      let step-counter 0
-      while [not member? nextpatch  allowed-patches and step-counter < 10] [
-        ifelse (go-right? = true) [
-           right 45
-        ][
-           left 45
-        ]
-        set nextpatch [pcolor] of patch-ahead 1
-        set step-counter step-counter + 1
-      ]
-
       set hugging-edges-steps hugging-edges-steps - 1
-
-      ;; this guy is totally trapped, just give up.
-      if (step-counter = 10) [
+      if (turn-along-edge = false ) [
+        ;; this guy is totally trapped, just give up.
         set color black
         set pcolor green
         show (word "trapped worker: " who)
@@ -238,4 +257,41 @@ to set-direction [little-dude]
 end  ;; set-direction
 
 
+;; returns false if we are totally stuck
+to-report turn-along-edge
+    let nextpatch [pcolor] of patch-ahead 1
+    let turn-counter 0
+    show (word nextpatch heading )
+    while [not member? nextpatch  allowed-patches and turn-counter < 10] [
+      ifelse (go-right? = true) [ 
+         show ( word "right 45 " heading )
+         right 45
+      ][ 
+         show ( word "left 45 " heading )
+         left 45
+      ]
+      set nextpatch [pcolor] of patch-ahead 1
+      set turn-counter turn-counter + 1
+      
+      hatch 1 [
+        set size 0.01
+        pen-down fd 15
+        wait 1
+        pen-erase bk 15
+        die
+      ]
+    ]
+    
+    if turn-counter > 3 [
+      show "probably spinning"
+      show heading
+      die
+    ]
+    
+    if (turn-counter = 10) [ 
+      show "twirling"
+      report false ]
+    
+    report true
+end
 

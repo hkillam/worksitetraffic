@@ -51,7 +51,7 @@ to init-worker [  colorA colorB dest-buildings home-plate mud-slows mud-tires da
 end
 
 to set-worker-bold [colorA danger-harms]
-   set allowed-patches (list clr-path clr-road clr-moveable-facility red )   ;; add red for testinng breadcrumbs
+   set allowed-patches (list clr-path clr-road clr-moveable-facility )   ;; add red for testinng breadcrumbs
    set allowed-patches lput clr-mud allowed-patches
    set color colorA
    if danger-harms = 1 [
