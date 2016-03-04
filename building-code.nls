@@ -1,3 +1,44 @@
+
+; 
+; create-buildinglist
+;
+; reads the xlsx file, creates an array of buildings
+;
+to create-buildinglist
+    let temp-building-list csv:from-file "buildings.csv"  
+    
+    
+    let firstrow item 0 temp-building-list
+    if item 0 firstrow = "facility" [ set temp-building-list remove-item 0 temp-building-list]
+
+    foreach temp-building-list [
+      let buildnum  item 0 ?
+      let dest item 7 ?
+      let mud-slows 0
+      if item 8 ? > 0 or item 9 ? > 0 
+      [ set mud-slows 1 ]
+      let danger-harms item 10 ?
+      
+      ;; check destination(s) for a single value or a list
+      ;; currently, this only works for two destinations.  need to loop for more than two
+      ifelse (member? "," (word dest)) [
+        let comma position "," dest
+        let desta read-from-string substring dest 0 comma
+        let destb read-from-string substring dest (comma + 1) (length dest)
+        set dest list desta destb
+      ]  [
+        set dest (list dest)
+      ]
+      
+      ;; update the building array, and add it to the real list
+      let new-building replace-item 7 ? dest
+      set building-list lput new-building building-list
+    ]
+    
+end
+
+
+
 to-report building-stats [building-num]
     let bx1 min [pxcor] of patches with [building-number = building-num]
     let by1 min [pycor] of patches with [building-number = building-num]
@@ -117,6 +158,8 @@ to draw-mainbuilding
   [set pcolor clr-fixed-facility
     set building-number 1]   
 end
+
+;; called from init
 
 to  make-buildings-from-list[  ]
   foreach building-list [

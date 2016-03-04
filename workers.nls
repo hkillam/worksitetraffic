@@ -79,23 +79,13 @@ to setup-workers
     let buildnum  item 0 ?
     if buildnum != "facility" [
       let buildname  item 1 ?
-      let numworkers  item 6 ?
+      let numworkers  item 6 ? 
       let dest item 7 ?
 
       ;; how does mud/danger affect workers from this building?
       let mud-slows item 8 ?
       let mud-tires item 9 ?
       let danger-harms item 10 ?
-
-      ;; currently, this only works for two destinations.  need to loop for more than two
-      ifelse (member? "," (word dest)) [
-        let comma position "," dest
-        let desta read-from-string substring dest 0 comma
-        let destb read-from-string substring dest (comma + 1) (length dest)
-        set dest list desta destb
-      ]  [
-        set dest (list dest)
-      ]
 
       create-workers numworkers [
         move-to one-of patches with [building-number = buildnum]

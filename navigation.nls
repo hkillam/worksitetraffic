@@ -1,73 +1,215 @@
+;; navigation.nls
+;;
+;; a collection of functions that determine how breadcrumbs 
+;; are made and how workers find their way around.
+;;
+;;
 
-;; call this function before workers are created
-to create-breadcrumbs [src dst bold danger-harms]
-  let breadcrumbs []
-  let show-test-msgs false
+
+;;
+;; blaze-trail
+;;
+;; calls create-breadcrumbs 5 times, returns the shortest path
+;;
+to-report blaze-trail [src dst bold danger-harms]
+    let besttrail (list 0 0 0 100000)
+    let newtrail (list 0 0 0 1000)
+    foreach [1 2 3 4 5] [
+       set newtrail create-breadcrumbs src dst bold danger-harms  
+       if length newtrail > 6 and item 3 newtrail < item 3 besttrail 
+       [ set besttrail newtrail ]
+    ]
+    report besttrail
+end
+
+;;
+;; create-breadcrumbs-from_buildinglist
+;;
+;; AFTER building list is built,
+;; AFTER buildings are all drawn,
+;; BEFORE workers are created
+;;
+to create-breadcrumbs-from_buildinglist
   
-  set breadcrumbs lput src breadcrumbs
-  set breadcrumbs lput dst breadcrumbs
-  set breadcrumbs lput  bold breadcrumbs
-  set breadcrumbs lput 0 breadcrumbs  ;; place holder for path length
+    foreach building-list [
+      let buildnum  item 0 ?
+      let dest item 7 ?
+      let mud-slows 0
+      if item 8 ? > 0 or item 9 ? > 0 
+      [ set mud-slows 1 ]
+      let danger-harms item 10 ?
+
+      foreach dest [
+        if not trail-exists buildnum ? 0 0 [
+          
+        ]
+      ]
+
+
+      ;; make sure there is a breadcrumb trail for every destination
+      foreach dest [
+        if not trail-exists buildnum ? 0 0 [
+            let newtrail blaze-trail buildnum ? 0 0
+            if length newtrail > 6 [
+               set breadcrumb-trails lput newtrail breadcrumb-trails
+            ]
+        ]
+        if not trail-exists buildnum ? mud-slows danger-harms [
+            let newtrail blaze-trail buildnum ? mud-slows danger-harms
+            if length newtrail > 6 [
+              set breadcrumb-trails lput newtrail breadcrumb-trails
+            ]
+        ]
+      ]
+    ]  
+end
+
+;;
+;; trail-exists
+;;
+;; do we have breadcrumbs for this trail?
+;;
+to-report trail-exists [src dst bold danger-harms]
+  foreach breadcrumb-trails [
+    if item 0 ? = src and item 1 ? = dst and item 2 ? = bold and item 3 ? = danger-harms
+    [ report true ]
+    if item 1 ? = src and item 0 ? = dst and item 2 ? = bold and item 3 ? = danger-harms
+    [ report true ]
+  ]  
+  report false
+end
+
+;;
+;; create-breadcrumbs
+;;
+;; returns an arrary of [src dst bold length [x,y] [x,y] [x,y]...]
+;; call this function before workers are created, all will die at the end.
+;;
+to-report create-breadcrumbs [src dst bold danger-harms]
+  let breadcrumbs (list src dst bold 0)
+  let show-test-msgs false
+  let stop-spinning 800
   
   create-temp-worker src dst bold danger-harms
   
   ask workers
   [
-       while [[building-number] of patch-ahead 1 != dst and length breadcrumbs < 1000] [
+    
+       ;; march until we find the building or we have gone in 1000 circles
+       while [[building-number] of patch-ahead 1 != dst and length breadcrumbs < stop-spinning] [
+         let lastheading heading
          
-         let mypaths []
-         if hugging-edges-steps < 1 [
-           ;; get list of all possible paths
-           set  mypaths possible-path-list self 2 false
-           if length mypaths = 0 [ 
-             set mypaths possible-path-list self 0 false
-             show  ( word "skinny path " pxcor " " pycor " " go-right?) 
-           ]  ;; if there aren't good paths with some buffer, try again with no buffer
-         ]
+         ;; decide where to go, and get there
+         move-one-step
          
-         if length mypaths = 0 and hugging-edges-steps < 1
-         [ show (word "SOS" pxcor pycor)
-           set hugging-edges-steps 9 ] 
-         
-         
-         ifelse hugging-edges-steps > 0[
-           ;; there are no paths, hug the edges.
-           set hugging-edges-steps hugging-edges-steps - 1
-           let ret turn-along-edge  
-           show hugging-edges-steps 
-         ][
-           let myheading bestheading-path mypaths
-           if heading != myheading [
-              set heading myheading
-              set breadcrumbs add-breadcrumb myheading src dst breadcrumbs
-           ]
-         ]
-         
-         let nextpatchcolor [pcolor] of patch-ahead 1
-         ifelse (not member? nextpatchcolor  allowed-patches) 
-         [ show (word "we shouldn't be doing this " heading) ]
-         [ forward 1 ]
+         ;; add our current position to the list of breadcrumbs.  we can skip this if there was no change in direction
+        ;; if lastheading != heading [
+             set breadcrumbs add-breadcrumb breadcrumbs
+        ;; ]
+
        ]
        set breadcrumbs lput (list pxcor pycor) breadcrumbs  ;; add final point to the list
 
-       
-       ;; optimize the list
-       if length breadcrumbs < 1000 [
+       ;; optimize the list (unless we hit 1000 points and gave up)
+       if length breadcrumbs < stop-spinning [
          let index 4
          while [index + 2 < length breadcrumbs] [
            set breadcrumbs optimize-breadcrumbs breadcrumbs index  ;; start at 5th item, first four are not points
            set index index + 1
          ] 
        ]
+       
+       if length breadcrumbs > 4 and length breadcrumbs < stop-spinning [
+         ;; measure the list
+         let pathlength measure-breadcrumb-trail breadcrumbs
+         set breadcrumbs replace-item 3 breadcrumbs pathlength
+       ]       
+       ;; done with this temp, kill him
        die
   ]  
   
-  if length breadcrumbs < 1000 [
-     set breadcrumb-trails lput breadcrumbs breadcrumb-trails
+  if length breadcrumbs > stop-spinning - 1 or length breadcrumbs < 6 [
+    show "scout is lost, send someone else"
+     set breadcrumbs []
   ]
   
+  report breadcrumbs
 end   ;; create-breadcrumbs
 
+
+;;
+;; measure-breadcrumb-trail
+;;
+;; pass in a breadcrumb trail, return a total length
+;; used in turtle context
+;;
+to-report measure-breadcrumb-trail [trail]
+   let thelength 0
+   hatch 1 [
+
+      let pt1 item 4 trail
+      setxy  item 0 pt1 item 1 pt1
+      
+      foreach trail [
+        if is-list? ? [
+          set thelength thelength + distancexy item 0 ? item 1 ?
+          move-to patch item 0 ? item 1 ?
+        ]
+      ]
+      die;
+   ]
+   
+   report thelength
+end
+
+;;
+;; move-one-step
+;;
+;; tell a worker to look around and decide where to move, and go there
+;; uses the range of possible paths and chooses the best, or it hugs an edge.
+;; 
+;;
+to move-one-step
+  
+     ;; first check for a nice clear path with a buffer, then try a clear skinny path
+     let mypaths []
+     if hugging-edges-steps < 1 [
+       ;; get list of all possible paths
+       set  mypaths possible-path-list self 2 false
+       if length mypaths = 0 [ 
+         set mypaths possible-path-list self 0 false
+       ]  ;; if there aren't good paths with some buffer, try again with no buffer
+     ]
+     
+     ;; if we dont have a path, start hugging the edge
+     if length mypaths = 0 and hugging-edges-steps < 1
+     [ set hugging-edges-steps 9 ] 
+     
+     
+     ifelse hugging-edges-steps > 0[
+       ;; there are no paths, hug the edges, turn towards the next step
+       set hugging-edges-steps hugging-edges-steps - 1
+       let ret turn-along-edge  
+     ][
+       ;; choose the best path, and turn towards the next step
+       let myheading bestheading-path mypaths
+       set heading myheading
+     ]
+     
+     ;; double-check to see if it is a safe step, and move one.
+     let nextpatchcolor [pcolor] of patch-ahead 1
+     if ( member? nextpatchcolor  allowed-patches) 
+     [ forward 1 ]
+     
+     
+end
+
+;;
+;; optimize-breadcrumbs
+;;
+;; look at three points starting at index.  If there is a direct path 
+;; from the first to third, remove the second.  And repeat.
+;; returns the shortened breadcrumbs 
 to-report optimize-breadcrumbs [breadcrumbs index]
   
   if index + 2 < length breadcrumbs [
@@ -86,62 +228,85 @@ to-report optimize-breadcrumbs [breadcrumbs index]
   report breadcrumbs
 end
 
-to draw-breadcrumb-trail [ndx]
+;;
+;; draw-breadcrumb-trail
+;;
+;; only used for diagnostic purposes.  does not affect how the workers move.
+;; note that all workers are dead at the end of this, so call it before setting up workers.
+;;
+
+to draw-breadcrumb-trail [path]
+without-interruption [  
   
-  if length breadcrumb-trails > ndx [
-    let path item ndx breadcrumb-trails
-    create-temp-worker 1 1 1 1
+  create-temp-worker 1 1 1 1
+  
+  if length path > 4 [
     
-    if length path > 4 [
-      
-      let pt1 item 4 path
-      ask workers [ 
-        set color ndx * 10 + 5
-        setxy  item 0 pt1 item 1 pt1
-        pen-down 
-      ]
-      
-      foreach path [
-        if is-list? ? [
-          ask workers [ move-to patch item 0 ? item 1 ?  ]
-        ]
-      ]
+    let pt1 item 4 path
+    ask workers [ 
+      set color random (9) * 10 + 5
+      setxy  item 0 pt1 item 1 pt1
+      pen-down 
     ]
     
-    ask workers [ die ]
+    foreach path [
+      if is-list? ? [
+        ask workers [ move-to patch item 0 ? item 1 ?  ]
+      ]
+    ]
   ]
-  end
+  
+  ask workers [ die ]
+]
+end  ;; draw-breadcrumb-trail
 
+;;
+;; path-clear
+;;
+;; create a temporary worker to walk from one point to the second, and see if there is anything in the way
+;;
+;; returns true/false
+;; 
 to-report path-clear [pt1 pt2]
   let isclear true 
-  ;; move our guy to the first breadcrumb, and look at the next
-  setxy  item 0 pt1 item 1 pt1
-  face patch item 0 pt2 item 1 pt2
-  let dist distancexy  item 0 pt2 item 1 pt2
-  let step-counter 1                              ;; count steps along the path that is being examined
-  
-  
-  ;; if (not is-allowed-patch patch-ahead step-counter 2 allowedpatches)
-  while [step-counter < dist + 5 and isclear = true] [
-    if  patch-ahead step-counter = pt2 [stop]
-    set step-counter step-counter + 1
-    if (not is-allowed-patch patch-ahead step-counter 2) [
-      set isclear false
+  hatch 1 [ 
+    ;; move our guy to the first breadcrumb, and look at the next
+    setxy  item 0 pt1 item 1 pt1
+    face patch item 0 pt2 item 1 pt2
+    let dist distancexy  item 0 pt2 item 1 pt2
+    let step-counter 1                              ;; count steps along the path that is being examined
+    
+    
+                                                    ;; if (not is-allowed-patch patch-ahead step-counter 2 allowedpatches)
+    while [step-counter < dist + 5 and isclear = true] [
+      if  patch-ahead step-counter = pt2 [stop]
+      set step-counter step-counter + 1
+      if (not is-allowed-patch patch-ahead step-counter 2) [
+        set isclear false
+      ]
     ]
-  ]
-
-  ;; diagnostic 
-  if isclear = true and 1 = 0 [
-    pen-down
-    set color blue
-    move-to patch item 0 pt2 item 1 pt2
+    
+    ;; diagnostic 
+    if isclear = true and 1 = 0 [
+      pen-down
+      set color blue
+      move-to patch item 0 pt2 item 1 pt2
+    ]
+    
+    die
   ]
 
   report isclear
 end
 
+;;
+;; create-temp-worker
+;;
+;; creates and initializes a temporary worker
+;;
 to create-temp-worker [src dst bold danger-harms]
-  create-workers 1 [
+  create-workers 1 
+  ask workers [
       move-to one-of patches with [building-number = src]
       init-worker red red (list dst) src 1 1 1
       set shape "arrow"
@@ -154,9 +319,14 @@ to create-temp-worker [src dst bold danger-harms]
   ]
 end
 
+;;
+;; bestheading-path
+;;
+;; receives a list of [heading distance] options
+;; returns heading with the longest distance
+;;
 to-report bestheading-path [mypaths]
   
-   if length mypaths < 1 [ show (word "no path " pxcor " " pycor) ]
    let myheading  heading
    let step-count  0
    foreach mypaths [
@@ -172,18 +342,24 @@ to-report bestheading-path [mypaths]
    report myheading
 end
 
-to-report add-breadcrumb [newheading src dst breadcrumbs]
-   ;; see if this is sa breadcrumb
-;;   ifelse newheading != heading and building-number != src and building-number != dst [
-     ;; altering course, this is a breadcrumb
-     set breadcrumbs lput (list pxcor pycor) breadcrumbs
-     set heading newheading
-;;   ][ show "no change in heading" ]
+;;
+;; add-breadcrumb
+;;
+;; adds the current location of the current worker to the end of the breadcrumbs array
+;; returns the breadcrumbs
+;;
+to-report add-breadcrumb [breadcrumbs]
+   set breadcrumbs lput (list pxcor pycor) breadcrumbs
    report breadcrumbs
 end
 
 
+;;
+;; show-planned-path
+;;
 ;; helper function - sketch the path we plan to follow
+;; visible lines do not affect how turtles move - the patch color under the path is not changed.
+;;
 to show-planned-path [steps]
        if steps > 0  [
          hatch 1 [
@@ -232,7 +408,6 @@ to set-direction [little-dude]
 
       ask little-dude [
          set heading  currentheading
-         show heading
       ]
 
 
@@ -261,13 +436,10 @@ end  ;; set-direction
 to-report turn-along-edge
     let nextpatch [pcolor] of patch-ahead 1
     let turn-counter 0
-    show (word nextpatch heading )
     while [not member? nextpatch  allowed-patches and turn-counter < 10] [
       ifelse (go-right? = true) [ 
-         show ( word "right 45 " heading )
          right 45
       ][ 
-         show ( word "left 45 " heading )
          left 45
       ]
       set nextpatch [pcolor] of patch-ahead 1
@@ -282,14 +454,8 @@ to-report turn-along-edge
       ]
     ]
     
-    if turn-counter > 3 [
-      show "probably spinning"
-      show heading
-      die
-    ]
-    
+   
     if (turn-counter = 10) [ 
-      show "twirling"
       report false ]
     
     report true

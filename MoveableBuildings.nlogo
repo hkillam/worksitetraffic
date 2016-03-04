@@ -21,24 +21,26 @@ to setup ; linked with setup button on interface
   clear-all
   set-default-shape turtles "person"
   set breadcrumb-trails []
+  set building-list []
   setup-patches "moveablebuildings.bmp" "colours.csv"
-  set building-list csv:from-file "buildings.csv"
+  create-buildinglist
   make-buildings-from-list
+  create-breadcrumbs-from_buildinglist
 
-  create-breadcrumbs 14 1 0 0    ;; currently a difficult path, because there is only a tiny access point to 1.
+;;  let newtrail create-breadcrumbs 14 1 0 0    ;; currently a difficult path, because there is only a tiny access point to 1.
+;;  set breadcrumb-trails lput newtrail breadcrumb-trails
+
 ;;  create-breadcrumbs 18 14 0 0
  ;; create-breadcrumbs 15 14 0 0
 ;;  create-breadcrumbs 18 15 0 0
 
   ;; diagnostic - show the breadcrumb trails for a moment.
   ;; note that these trails are invisible to the workers, and do not affect worker movement.
-;;  draw-breadcrumb-trail 3
-;;  draw-breadcrumb-trail  1
-;;  draw-breadcrumb-trail  2
-  draw-breadcrumb-trail  0
+  foreach breadcrumb-trails [
+    draw-breadcrumb-trail ?
+  ]
 
   setup-workers
-
 
   reset-ticks
 end
@@ -169,9 +171,10 @@ to-report possible-path-list [little-dude theradius show-test-msgs]
 
 
 ;; changing this angle will keep most dudes from hopping back and forth in a small space
-;; 200 degrees failed on 27th attempt
-;; 210 degrees failed on 49
-  while [totalangle < 210]
+;; 200 degrees failed on 27th attempt  going from building 14 to 1
+;; 210 degrees failed on 49 going from building 14 to 1
+;; 210 is really bad for going from 15 to 14
+  while [totalangle < 190]
   [
 
       let path-info []
