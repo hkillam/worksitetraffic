@@ -1,4 +1,5 @@
-;; navigation.nls
+;;
+;; NAVIGATION
 ;;
 ;; a collection of functions that determine how breadcrumbs 
 ;; are made and how workers find their way around.
@@ -129,7 +130,7 @@ to-report create-breadcrumbs [src dst bold danger-harms]
   ]  
   
   if length breadcrumbs > stop-spinning - 1 or length breadcrumbs < 6 [
-    show "scout is lost, send someone else"
+     ;; show "scout is lost, send someone else"
      set breadcrumbs []
   ]
   
@@ -217,7 +218,7 @@ to-report optimize-breadcrumbs [breadcrumbs index]
     let pt1 item index breadcrumbs
     let pt2 item (index + 2) breadcrumbs
     
-    if path-clear pt1 pt2 = true [
+    if path-clear pt1 pt2 2 = true [
       ;; remove the point that is not needed, recurse deeper in.
       set breadcrumbs remove-item (index + 1) breadcrumbs
       set breadcrumbs optimize-breadcrumbs breadcrumbs index
@@ -267,28 +268,53 @@ end  ;; draw-breadcrumb-trail
 ;;
 ;; returns true/false
 ;; 
-to-report path-clear [pt1 pt2]
+to-report path-clear [pt1 pt2 radius]
   let isclear true 
+  let dude who
+  let debug-mode false
+  if who = -1 [set debug-mode true]
   hatch 1 [ 
+    if debug-mode = true [show (word "hatched a who " who )]
     ;; move our guy to the first breadcrumb, and look at the next
+    if debug-mode = true [
+      show (word pt1 pt2 )
+      setxy item 0 pt2 item 1 pt2 
+;;      set size 0.1 
+      set color red 
+      ;;pen-down 
+      show (word "src: " pt1 " dest: " pt2)
+      show (word "allowed colors: " allowed-patches)
+     ]  ;; show the line
     setxy  item 0 pt1 item 1 pt1
-    face patch item 0 pt2 item 1 pt2
+    if debug-mode = true [pen-up]
+    face-nowrap patch item 0 pt2 item 1 pt2
     let dist distancexy  item 0 pt2 item 1 pt2
+    if debug-mode = true [ show dist ]
     let step-counter 1                              ;; count steps along the path that is being examined
     
-    
-                                                    ;; if (not is-allowed-patch patch-ahead step-counter 2 allowedpatches)
-    while [step-counter < dist + 5 and isclear = true] [
-      if  patch-ahead step-counter = pt2 [stop]
+   
+    ;; if (not is-allowed-patch patch-ahead step-counter 2 allowedpatches)
+    while [step-counter < dist + 1 and isclear = true] [
+      if debug-mode = true [
+;;        show ( word patch-ahead step-counter " "  [pcolor] of patch-ahead step-counter) 
+;;        show is-allowed-patch patch-ahead step-counter radius
+        
+      ]
+      if  patch-ahead step-counter = patch item 0 pt2 item 1 pt2 [ die report isclear]
       set step-counter step-counter + 1
-      if (not is-allowed-patch patch-ahead step-counter 2) [
+      
+      if ( is-allowed-patch patch-ahead step-counter radius = false) [
+        if debug-mode = true [
+          show (word "problem " step-counter " steps ahead at patch " patch-ahead step-counter " colour " [pcolor] of patch-ahead step-counter)
+          show (word "from patch " pt1 " to patch " pt2 " only using " allowed-patches)
+        ]
         set isclear false
       ]
     ]
     
     ;; diagnostic 
-    if isclear = true and 1 = 0 [
-      pen-down
+    if isclear = true and debug-mode = true [
+      ;;pen-down
       set color blue
       move-to patch item 0 pt2 item 1 pt2
     ]
@@ -365,11 +391,100 @@ to show-planned-path [steps]
          hatch 1 [
            set color blue
            set size 0.01
-           pen-down fd steps
+           ;; pen-down fd steps
           ;; wait 1
           ;; pen-erase bk steps
            die
          ]]
+end
+
+
+;;
+;; select-breadcrumbs [ src dest bold ]
+;;
+;; Called when a worker picks a destination, or changes direction.
+;; returns an array of (pathindex reversed point)
+;; where point is the position in the array of points
+;;
+to-report select-breadcrumbs [src dest bold ]
+   let ndx 0
+  
+   foreach breadcrumb-trails
+   [ 
+      if src = item 0 ? and dest = item 1 ? and bold = item 2 ? [ report ( list ndx false 4) ]
+      if src = item 1 ? and dest = item 0 ? and bold = item 2 ? [ report ( list ndx true (length ? - 1)) ]
+      set ndx ndx + 1
+   ]
+   report (list )
+end
+
+
+;;
+;; follow-the-yellow-brick-road
+;;
+;; face the next breadcrumb, and don't step on each other.
+;;
+to follow-the-yellow-brick-road
+  let debug-mode false
+  if who = -1 [set debug-mode true]
+  
+  ;; are we still playing?
+  if color = black [ stop ]
+  pen-down
+
+  ;; can we see the actual goal?
+  if path-clear (list pxcor pycor) (list [pxcor] of goal [pycor] of goal) 0 = true
+  [
+    if debug-mode [
+      show (word "it thinks the path is clear to the goal.  " item trail-id breadcrumb-trails )
+    ]
+    face-nowrap goal
+    stop
+  ]
+  
+  if breadcrumb-num < 4
+  [
+    ;; there are no crumbs if there is a direct path between buildings.  but we might be in a corner somewhere.
+    if debug-mode [ show (word "no crumbs, and can't see goal, stuck in a weird corner " pxcor "," pycor " " goal)]
+    stop
+  ] 
+  
+;;  show (word "on patch " pxcor ", " pycor " using crumb " breadcrumb-num)
+  
+  ;; can we see the next crumb
+  let next-crumb-num breadcrumb-num + 1
+  if breadcrumb-reverse = true [set next-crumb-num breadcrumb-num - 1]
+;;  show breadcrumb-reverse
+  let crumb []
+  if next-crumb-num < length item trail-id breadcrumb-trails [
+     set crumb item next-crumb-num ( item trail-id breadcrumb-trails)
+  ]
+;;  show item trail-id breadcrumb-trails
+;;  show breadcrumb-num
+  
+  if  is-list? crumb and length crumb > 1 
+  [
+    if path-clear (list pxcor pycor) (list item 0 crumb  item 1 crumb) 0
+    [
+      face-nowrap patch item 0 crumb  item 1 crumb
+      set breadcrumb-num next-crumb-num
+if debug-mode = true [      show "moving along trail" ]
+      stop
+    ]
+  ]
+  
+  ;; continue to the current crumb
+  set crumb item breadcrumb-num  (item trail-id breadcrumb-trails)
+;;  show (word "current crumb is: " crumb )
+  if path-clear (list pxcor pycor) (list item 0 crumb  item 1 crumb) 0
+  [
+    face-nowrap patch item 0 crumb  item 1 crumb
+    stop
+  ]
+  
+;;  show (word "lost in a snowstorm - can't see breadcrumbs " breadcrumb-num " of " item trail-id breadcrumb-trails )
+  ;; uhhhh...  face it anyway, i guess
+  face-nowrap patch item 0 crumb  item 1 crumb
 end
 
 
@@ -445,13 +560,13 @@ to-report turn-along-edge
       set nextpatch [pcolor] of patch-ahead 1
       set turn-counter turn-counter + 1
       
-      hatch 1 [
-        set size 0.01
-        pen-down fd 15
-        wait 1
-        pen-erase bk 15
-        die
-      ]
+;;      hatch 1 [
+;;        set size 0.01
+;;        pen-down fd 15
+;;        wait 1
+;;        pen-erase bk 15
+;;        die
+;;      ]
     ]
     
    

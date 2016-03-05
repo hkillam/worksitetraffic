@@ -27,13 +27,6 @@ to setup ; linked with setup button on interface
   make-buildings-from-list
   create-breadcrumbs-from_buildinglist
 
-;;  let newtrail create-breadcrumbs 14 1 0 0    ;; currently a difficult path, because there is only a tiny access point to 1.
-;;  set breadcrumb-trails lput newtrail breadcrumb-trails
-
-;;  create-breadcrumbs 18 14 0 0
- ;; create-breadcrumbs 15 14 0 0
-;;  create-breadcrumbs 18 15 0 0
-
   ;; diagnostic - show the breadcrumb trails for a moment.
   ;; note that these trails are invisible to the workers, and do not affect worker movement.
   foreach breadcrumb-trails [
@@ -124,29 +117,6 @@ to redirect-workers
          ]
 end
 
-;; create people
-;; arrive at destination
-;; buildings move
-to set-new-destination [new-dest new-searching add-trip ]
-      set goal one-of patches with [building-number = new-dest]
-      ;;set goal center-of-building new-dest  ;; slow!
-      face goal
-      set searching?  new-searching
-      set trips-completed trips-completed + add-trip
-      set previous-patch patch 0 0
-      set dice-tossed? 0
-      set hugging-edges-steps 0
-      set blue-sky-steps 0
-
-      ;; tell turtle which direction it will need to turn to go away from the center
-      let centerheading towardsxy 105 105
-      ifelse (subtract-headings centerheading heading > 0) [
-        set go-right? false
-      ] [
-        set go-right? true
-      ]
-end
-
 to-report possible-path-list [little-dude theradius show-test-msgs]
   let path-list []
 
@@ -156,7 +126,7 @@ to-report possible-path-list [little-dude theradius show-test-msgs]
   ]
 
   let currentheading [heading] of little-dude
-;;  no-display
+  no-display
 
   ;; site the goal, adjust direction toward it.
   set heading towards-nowrap goal
@@ -178,23 +148,20 @@ to-report possible-path-list [little-dude theradius show-test-msgs]
   [
 
       let path-info []
-      if show-test-msgs [
-        show heading
-        hatch 1 [
-          set size 0.01
-          pen-down fd 15
-          wait 1
-          pen-erase bk 15
-          die
-        ]
-      ]
+;;      if show-test-msgs [
+;;        show heading
+;;        hatch 1 [
+  ;;        set size 0.01
+;;          pen-down fd 15
+;;          wait 1
+;;          pen-erase bk 15
+;;          die
+;;        ]
+;;      ]
       ifelse heading = towards-nowrap goal
       [ set path-info test-path 1000 theradius]
       [ set path-info test-path steps-to-check theradius]
 
-if show-test-msgs [
-  show path-info
-]
       if length path-info > 1 [
         ;; is this direct to destination?
         if item 2 path-info = true [
@@ -276,12 +243,18 @@ end
 
 ;; when checking if the next patch is a permitted colour, this function lets you check the buffer as well
 ;;
+;; returns:  true/false
+;;
 to-report is-allowed-patch [thepatch theradius]
   let permitted true
+  let debug-mode false
   let allowedpatchclrs allowed-patches
+ ;; if who = 3815 or who = 3647
+  set debug-mode false
 
   ifelse theradius <= 1 [
-    if (not member? pcolor  allowedpatchclrs) [ set permitted false ]
+    if (not member? [pcolor] of thepatch  allowedpatchclrs) [ set permitted false ]
+;;    if debug-mode = true [ show ( word "color: " pcolor " allowed: "  allowedpatchclrs " permitted?: " permitted " should be: " member? pcolor  allowedpatchclrs)  ]
   ][
     ask thepatch [
        ask patches in-radius theradius [
@@ -330,7 +303,7 @@ to face-longest-path [little-dude path-list]
 
     if blue-sky-steps > 0 and avoid-mud? = 1 and 1 = 0 [
     hatch 1 [
-      set size 0.01
+    ;;  set size 0.01
       pen-down fd blue-sky-steps
       wait 1
       pen-erase bk blue-sky-steps
@@ -354,25 +327,27 @@ to move-worker [little-dude]
 
          if energy < 1
          [ set color black
+           pen-up
            move-to center-of-building 1  ;; get out of the way, but don't die and lose the info
            stop
          ]
 
-         set-direction little-dude
+         ;;set-direction little-dude
+         follow-the-yellow-brick-road
          let step-size 1
 
          let nextpatch [pcolor] of patch-ahead 1
 
          if not member? nextpatch  allowed-patches [
            set hugging-edges-steps 10
-           ;; show "course correction"
-           stop;
+;;           show "course correction"
+;;           stop;
          ]
 
          ;; check for sticky situations
          if pcolor = clr-mud or pcolor = clr-danger
          [
-            if avoid-mud? = 1 [ show "how did this guy get here?" ]
+;;            if avoid-mud? = 1 [ show "how did this guy get here?" ]
             if slow-in-mud? = 1 [ set step-size .5 ]
             if tired-in-mud? = 1 [set energy energy - 1]
             if risk-danger? = 1 and pcolor = clr-danger and dice-tossed? = 0
@@ -388,30 +363,33 @@ to move-worker [little-dude]
 
 
          ;; check for someone on that patch, step to the right (unless we are already hugging an edge)
-         if (count (turtles-on (patch-ahead 1)) >= max-turtles-per-square and [pcolor] of patch-ahead 1 != clr-moveable-facility)
-         [
-           ;; patch-right-and-ahead angle distance
-           if (hugging-edges-steps < 1) [
-             set nextpatch [pcolor] of patch-right-and-ahead 45 1
-
-             ifelse ( member? nextpatch  allowed-patches and count (turtles-on (patch-right-and-ahead 45 1)) < max-turtles-per-square)
-             [
-               move-to patch-right-and-ahead 45 step-size
-               set blue-sky-steps 0
-
-             ]
-             [
-               set nextpatch [pcolor] of patch-right-and-ahead 90 1
-               if ( member? nextpatch  allowed-patches and count (turtles-on (patch-right-and-ahead 90 1)) < max-turtles-per-square)
-               [
-                 move-to patch-right-and-ahead 90 step-size
-                 set blue-sky-steps 0
-               ]
-             ]
-           ]
-           set energy energy - 1
-           stop
-         ]
+;;         if (count (turtles-on (patch-ahead 1)) >= max-turtles-per-square
+;;            and [building-number] of patch-ahead 1 = 0)
+;         [
+ ;          ;; patch-right-and-ahead angle distance
+;           if (hugging-edges-steps < 1) [
+;             set nextpatch [pcolor] of patch-right-and-ahead 45 1
+;
+;             ifelse ( member? nextpatch  allowed-patches and count (turtles-on (patch-right-and-ahead 45 1)) < max-turtles-per-square)
+;             [
+;               move-to patch-right-and-ahead 45 step-size
+;               set blue-sky-steps 0
+;               show "bump"
+;
+;             ]
+;             [
+;               set nextpatch [pcolor] of patch-right-and-ahead 90 1
+;               if ( member? nextpatch  allowed-patches and count (turtles-on (patch-right-and-ahead 90 1)) < max-turtles-per-square)
+;               [
+;                 move-to patch-right-and-ahead 90 step-size
+;                 set blue-sky-steps 0
+;                 show "bump"
+;               ]
+;             ]
+;           ]
+;           set energy energy - 1
+;           stop
+;         ]
 
 
          ;; everyone!
@@ -420,6 +398,7 @@ to move-worker [little-dude]
          if energy < 1  [
            set color black
            set no-energy-tick  ticks
+           pen-up
            move-to patch 1 1
          ]
 

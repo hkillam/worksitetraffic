@@ -1,3 +1,10 @@
+;;
+;; WORKERS
+;;
+;; describe workers and store information
+;; functions to create and direct them
+;;
+
 breed [ workers ]
 
 
@@ -21,9 +28,51 @@ workers-own [
   tired-in-mud?         ;; from the input file - how is the worker affected by mud
   risk-danger?          ;; from the input file - how is the worker affected by mud
   working-ticks         ;; count down how long a worker stays in a work building
+  trail-id              ;; which string of breadcrumbs is he following
+  breadcrumb-reverse    ;; true if starting at end and going to beginning
+  breadcrumb-num        ;; how far along the string of breadcrumbs is he
 ]
 
 
+;;
+;; setup-workers
+;;
+;; called from setup function to read building list and generate all of the workers
+;;
+to setup-workers
+
+  foreach building-list [
+    let buildnum  item 0 ?
+    if buildnum != "facility" [
+      let buildname  item 1 ?
+      let numworkers  item 6 ? 
+      let dest item 7 ?
+
+      ;; how does mud/danger affect workers from this building?
+      let mud-slows item 8 ?
+      let mud-tires item 9 ?
+      let danger-harms item 10 ?
+
+      create-workers numworkers [
+        move-to one-of patches with [building-number = buildnum]
+        let color1 95
+        let color2 85
+        if (buildnum = 14) [ set color1 orange set color2 yellow ]
+        if (buildnum = 18) [ set color1 95 set color2 85 ]
+        if (buildnum = 15) [ set color1 115 set color2 125  ]
+        init-worker color1 color2 dest buildnum mud-slows mud-tires danger-harms
+      ]
+    ]
+  ]
+
+end
+
+
+;;
+;; init-worker
+;;
+;; Initializes a single worker, personality, destination.
+;;
 to init-worker [  colorA colorB dest-buildings home-plate mud-slows mud-tires danger-harms]
       let dest one-of dest-buildings
       set home-building home-plate
@@ -73,34 +122,49 @@ to set-worker-avoider [colorB]
 end
 
 
-to setup-workers
 
-  foreach building-list [
-    let buildnum  item 0 ?
-    if buildnum != "facility" [
-      let buildname  item 1 ?
-      let numworkers  item 6 ? 
-      let dest item 7 ?
+;;
+;; set-new-destination
+;;
+;; called when:  create people, arrive at destination, buildings move
+;;
+to set-new-destination [new-dest new-searching add-trip ]
+      set goal one-of patches with [building-number = new-dest]
+      ;;set goal center-of-building new-dest  ;; slow!
+      face goal
+      set searching?  new-searching
+      set trips-completed trips-completed + add-trip
+      set previous-patch patch 0 0
+      set dice-tossed? 0
+      set hugging-edges-steps 0
+      set blue-sky-steps 0
 
-      ;; how does mud/danger affect workers from this building?
-      let mud-slows item 8 ?
-      let mud-tires item 9 ?
-      let danger-harms item 10 ?
-
-      create-workers numworkers [
-        move-to one-of patches with [building-number = buildnum]
-        let color1 95
-        let color2 85
-        if (buildnum = 14) [ set color1 orange set color2 yellow ]
-        if (buildnum = 18) [ set color1 95 set color2 85 ]
-        if (buildnum = 15) [ set color1 115 set color2 125  ]
-        init-worker color1 color2 dest buildnum mud-slows mud-tires danger-harms
+      ;; tell turtle which direction it will need to turn to go away from the center
+      let centerheading towardsxy 105 105
+      ifelse (subtract-headings centerheading heading > 0) [
+        set go-right? false
+      ] [
+        set go-right? true
       ]
-    ]
-  ]
+      
+      ;; choose a trail of breadcrumbs
+      let bold 1
+      if avoid-mud? = true or avoid-mud? = 1 [ set bold 0 ]
+      let src home-building
+      if new-dest = home-building [set src destination-building]
+      let crumbly select-breadcrumbs src new-dest bold
 
+      if length breadcrumb-trails > 6 [
+         if length crumbly > 2 [
+           let mytrail item (item 0 crumbly) breadcrumb-trails
+         ]
+      ]
+      
+      if length crumbly > 2 [
+        set trail-id item 0 crumbly     
+        set breadcrumb-reverse item 1 crumbly     ;; true/false
+        set breadcrumb-num item 2 crumbly    
+      ]
 end
-
-
 
 
