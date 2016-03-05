@@ -1,4 +1,11 @@
 
+;; indicies in the array building-list
+globals [
+ I-ID      ;; 0
+ I-Dest    ;; 7
+ I-Center  ;; 15
+]
+
 ; 
 ; create-buildinglist
 ;
@@ -30,8 +37,12 @@ to create-buildinglist
         set dest (list dest)
       ]
       
-      ;; update the building array, and add it to the real list
+      ;; update the building array
       let new-building replace-item 7 ? dest
+      set new-building lput patch item 2 ? item 3 ? new-building  ;; index 13 is the center of the building, and we will reset this when the building is created/moded
+      let worker-zone (min (list item 4 ? item 5 ? ) / 2 ) - 2
+      set new-building lput worker-zone new-building  ;; index 14  ;; keep workers in this radius around the center
+
       set building-list lput new-building building-list
     ]
     
@@ -62,7 +73,65 @@ to-report building-stats [building-num]
     report (list building-num bx1 by1 bwid blen avoiders bold avoiders-trips bold-trips avoiders-triptime bold-triptime napper-trips)
 end
 
-to-report center-of-building [building-num]
+;;
+;; center-of
+;;
+;; find the building info, return the center
+;;
+to-report center-of [ building-num]
+  foreach building-list [
+    if building-num = item 0 ? [
+      if not is-patch? item 15 ? [
+        report reset-center-of-building building-num
+      ]
+      report item 15 ?
+    ]
+  ]
+  
+  ;; 1 doesn't appear in the list, just look it up.
+  if building-num = 1
+  [
+      report reset-center-of-building building-num
+  ]
+  
+  ;; this should not be possible.  but just in case.
+  report patch 1 1
+end
+
+;;
+;; worker-radius
+;;
+;; find the building info, return the radius where workers should start
+;;
+to-report shoot-a-dart [ building-num]
+  let theradius 15
+  let thedart one-of patches with [building-number = building-num]
+  
+  ;; look up the radius
+  foreach building-list [
+    if building-num = item 0 ? [
+      set theradius item 16 ?
+      
+    ]
+  ]
+  
+  ;; find the center, ask a patch near the center to volunteer
+  sprout 1  [
+    move-to center-of building-num
+    set thedart one-of patches in-radius theradius
+    die
+  ]
+  
+  report thedart
+    
+end
+
+;;
+;; find-center-of-building
+;;
+;; look on map to see building center of current building location, update the array of building info
+;;
+to-report reset-center-of-building [building-num]
 ;; another option is nearest block in building    
 ;; min-one-of patches with [ building-number = [destination-building] of myself ] [ distance myself ]
     let bx1 min [pxcor] of patches with [building-number = building-num]
@@ -71,10 +140,17 @@ to-report center-of-building [building-num]
     let by2 max [pycor] of patches with [building-number = building-num]
     let bxcenter mean list bx1 bx2
     let bycenter mean list by1 by2
+
+    let ndx 0
+    foreach building-list [
+      if building-num = item 0 ? [
+            let new-building replace-item 15  ? patch bxcenter bycenter  ;; index 15 is the center of the building, and we will reset this when the building is created/moded
+            set building-list replace-item ndx building-list new-building
+      ]
+      set ndx ndx + 1
+    ]
     
     report patch bxcenter bycenter
-  
-  
 end
 
 to-report mouse-clicked?
@@ -83,8 +159,8 @@ end
 
 to move-building
 
-  if mouse-down?
-  [
+  if mouse-down? [
+ 
     without-interruption [
          let temp-building-width 20
          let temp-building-height 20
@@ -130,7 +206,9 @@ to construct-hovel [building-num x1 y1 x2 y2]
      set building-height y2 - y1
    ]
 
-  ask patches with [pxcor = x1 + 5 and pycor = y1 + 5]
+   let center reset-center-of-building building-num  ;; find it, update the record
+
+   ask patches with [pxcor = x1 + 5 and pycor = y1 + 5]
    [
      set plabel-color black
      set plabel building-num
@@ -159,8 +237,11 @@ to draw-mainbuilding
     set building-number 1]   
 end
 
-;; called from init
-
+;;
+;; make-buildings-from-list
+;;
+;; Check out the list, create the buildings.  Caled from Startup
+;;
 to  make-buildings-from-list[  ]
   foreach building-list [
     let buildnum  item 0 ?

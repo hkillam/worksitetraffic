@@ -30,7 +30,7 @@ to setup ; linked with setup button on interface
   ;; diagnostic - show the breadcrumb trails for a moment.
   ;; note that these trails are invisible to the workers, and do not affect worker movement.
   foreach breadcrumb-trails [
-    draw-breadcrumb-trail ?
+;;    draw-breadcrumb-trail ?
   ]
 
   setup-workers
@@ -325,13 +325,6 @@ to move-worker [little-dude]
     without-interruption
      [
 
-         if energy < 1
-         [ set color black
-           pen-up
-           move-to center-of-building 1  ;; get out of the way, but don't die and lose the info
-           stop
-         ]
-
          ;;set-direction little-dude
          follow-the-yellow-brick-road
          let step-size 1
@@ -419,8 +412,6 @@ to check-goal  ;; worker procedure - if they have reached the goal, set a new on
     set-new-destination  destination-building 1 1
   ]
 end
-
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 214

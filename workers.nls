@@ -99,6 +99,11 @@ to init-worker [  colorA colorB dest-buildings home-plate mud-slows mud-tires da
       set risk-danger? danger-harms
 end
 
+;;
+;; set-worker-bold
+;;
+;; give a worker "bold" properties, charging through mud, laughing at danger, unstoppable (unless it's mother calls)
+;;
 to set-worker-bold [colorA danger-harms]
    set allowed-patches (list clr-path clr-road clr-moveable-facility )   ;; add red for testinng breadcrumbs
    set allowed-patches lput clr-mud allowed-patches
@@ -112,6 +117,11 @@ to set-worker-bold [colorA danger-harms]
     ]
 end
 
+;;
+;; set-worker-avoider
+;;
+;; give a worker "avoider" properties, going around mud or danger
+;;
 to set-worker-avoider [colorB]
   set allowed-patches (list clr-path clr-road clr-moveable-facility  red )
   set color colorB
@@ -129,8 +139,11 @@ end
 ;; called when:  create people, arrive at destination, buildings move
 ;;
 to set-new-destination [new-dest new-searching add-trip ]
-      set goal one-of patches with [building-number = new-dest]
-      ;;set goal center-of-building new-dest  ;; slow!
+      let thegoal one-of patches with [building-number = new-dest]
+      ask patch pxcor pycor [
+         set thegoal shoot-a-dart new-dest
+      ]
+      set goal thegoal
       face goal
       set searching?  new-searching
       set trips-completed trips-completed + add-trip

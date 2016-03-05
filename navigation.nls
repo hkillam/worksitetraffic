@@ -430,7 +430,7 @@ to follow-the-yellow-brick-road
   
   ;; are we still playing?
   if color = black [ stop ]
-  pen-down
+
 
   ;; can we see the actual goal?
   if path-clear (list pxcor pycor) (list [pxcor] of goal [pycor] of goal) 0 = true
