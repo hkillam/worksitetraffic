@@ -44,34 +44,11 @@ end
 
 to go  ;; forever button
 
-  if group-14-slow-in-mud
+  ask workers
   [
-    ask workers with [home-building = 14]
-     [
-       check-goal         ;; when we reach our goal, set a new goal
-       move-worker self
-     ]
-  ]
-
-  if group-18-tired-in-mud
-  [
-    ask workers with [home-building = 18]
-     [
-       check-goal         ;; when we reach our goal, set a new goal
-       move-worker self
-     ]
-  ]
-
-  if group-15-faces-danger
-  [
-
-    ask workers with [home-building = 15]
-     [
-       check-goal         ;; when we reach our goal, set a new goal
-       move-worker self
-     ]
-  ]
-
+     check-goal         ;; when we reach our goal, set a new goal
+     move-worker self
+   ]
 
   tick
 
@@ -607,43 +584,10 @@ INPUTBOX
 166
 309
 chance-of-injury-percent
-7
+2
 1
 0
 Number
-
-SWITCH
-12
-365
-173
-398
-group-14-slow-in-mud
-group-14-slow-in-mud
-0
-1
--1000
-
-SWITCH
-12
-396
-173
-429
-group-18-tired-in-mud
-group-18-tired-in-mud
-0
-1
--1000
-
-SWITCH
-12
-428
-173
-461
-group-15-faces-danger
-group-15-faces-danger
-0
-1
--1000
 
 MONITOR
 950
