@@ -151,13 +151,24 @@ to-report reset-center-of-building [building-num]
     report patch bxcenter bycenter
 end
 
-to-report mouse-clicked?
-  report (mouse-was-down? = true and not mouse-down?)
-end
+;;to-report mouse-clicked2?
+;;  report (mouse-was-down? = true and not mouse-down?)
+;;end
 
+
+
+;;
+;; move-building
+;;
+;; If the UI button "move building" is down, respond to a mouse click. 
+;; Move the bottom left corner of the building to the point where the mouse was clicked.  Replace with "path". 
+;;
 to move-building
-
-  if mouse-down? [
+  
+  ;; respond after a mouse click is released
+  if mouse-down? [ set mouse-was-down? true ]
+  if mouse-was-down? = true and not mouse-down? [
+    set mouse-was-down? false 
  
     without-interruption [
          let temp-building-width 20
@@ -176,7 +187,12 @@ to move-building
          let x2  mouse-xcor + temp-building-width
          let y2   mouse-ycor + temp-building-height
          construct-hovel building-to-move mouse-xcor mouse-ycor x2 y2
-
+         
+         ;; delete old breadcrumbs, make new ones.  People too, we need them cleared to make breadcrumbs.
+         ask workers [ die ]
+         set breadcrumb-trails []
+         create-breadcrumbs-from_buildinglist
+         setup-workers
 
          ;; before execution, move workers to their building.  If already executing, reset their directions.
          ifelse ticks = 0 [

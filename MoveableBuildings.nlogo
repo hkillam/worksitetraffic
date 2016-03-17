@@ -19,6 +19,7 @@ globals [
 
 to setup ; linked with setup button on interface
   clear-all
+  set mouse-was-down? false
   set-default-shape turtles "person"
   set breadcrumb-trails []
   set building-list []
