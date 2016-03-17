@@ -66,9 +66,7 @@ to-report building-stats [building-num]
     if bold-trips > 0 [ set bold-triptime  total-ticks / bold-trips]
 
     let napper-trips 0
-;;    if groupnum = 2 [
-       set napper-trips mean  [no-energy-tick] of workers with [no-energy-tick > 0]
-;;    ]
+    set napper-trips mean  [no-energy-tick] of workers with [no-energy-tick > 0 and building-num = home-building]
 
     report (list building-num bx1 by1 bwid blen avoiders bold avoiders-trips bold-trips avoiders-triptime bold-triptime napper-trips)
 end

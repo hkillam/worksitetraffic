@@ -294,6 +294,12 @@ end
 
 to move-worker [little-dude]
 
+    ;; if they are done for the day, stop
+    if color = black [
+      stop;
+    ]
+
+    ;; let the worker spend some time working int the dest building.
     if working-ticks > 0 [
       set working-ticks working-ticks - 1
       stop
@@ -365,7 +371,7 @@ to move-worker [little-dude]
          ;; everyone!
          set energy energy - 1
          forward step-size
-         if energy < 1  [
+         if energy < 1 and no-energy-tick = 0 [
            set color black
            set no-energy-tick  ticks
            pen-up
@@ -579,10 +585,10 @@ total-ticks
 Number
 
 INPUTBOX
-11
-249
-166
-309
+13
+342
+141
+402
 chance-of-injury-percent
 2
 1
@@ -682,10 +688,10 @@ NIL
 1
 
 SLIDER
-10
-315
-194
-348
+12
+408
+196
+441
 max-turtles-per-square
 max-turtles-per-square
 1
