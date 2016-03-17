@@ -5,6 +5,14 @@ patches-own [
   building-height   ;;  for moving and rebuilding.
 ]
 
+
+;;
+;; add-blocks
+;;
+;; If the button for "add blocks" is on, this function watches for mouse clicks, and 
+;; changes the color of the patches to the selected one.  It will not change buildings or space
+;; outside of the construction zone.
+;;
 to add-blocks
   let fixedcolors (list clr-moveable-facility clr-fixed-facility clr-fixed-facility2 clr-void)
   every .1

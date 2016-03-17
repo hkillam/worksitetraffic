@@ -11,7 +11,7 @@ globals [
   clr-fixed-facility
   clr-fixed-facility2
   clr-void
-  building-list
+
   mouse-was-down?
   breadcrumb-trails
 ]
@@ -20,6 +20,7 @@ globals [
 to setup ; linked with setup button on interface
   clear-all
   set mouse-was-down? false
+  setup-building-index-values
   set-default-shape turtles "person"
   set breadcrumb-trails []
   set building-list []

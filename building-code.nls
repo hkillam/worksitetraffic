@@ -1,10 +1,30 @@
 
 ;; indicies in the array building-list
 globals [
- I-ID      ;; 0
- I-Dest    ;; 7
- I-Center  ;; 15
+ building-list     ;; read from input file, then tweaked.
+ background-colours ;; preserve colours of patches behind a building.
+ 
+ I-ID              ;; 0  - ID of the building
+ I-Dest            ;; 7  - workers in this building are going towards one of these buildings (this item is a list)
+ I-Harm            ;; 10 - workers in this building are harmed if they enter the danger zone
+ I-Center          ;; 15 - the center patch - do not keep looking up the array and calculating this.
+ I-Radius          ;; 16 - limit the worker destinations to a circle in the middle.
+ I-CoveredColours  ;; 17 - record all of the colours that were on these patches before the building was made.
 ]
+
+; 
+; setup-building-index-values
+;
+; Create a list of meaningful values for indexes in building-list
+;
+to setup-building-index-values
+  set I-ID              0
+  set I-Dest            7
+  set I-Harm           10
+  set I-Center         15
+  set I-Radius         16
+  set I-CoveredColours 17
+end
 
 ; 
 ; create-buildinglist
@@ -12,14 +32,15 @@ globals [
 ; reads the xlsx file, creates an array of buildings
 ;
 to create-buildinglist
-    let temp-building-list csv:from-file "buildings.csv"  
+    let temp-building-list csv:from-file "buildings.csv" 
+    set background-colours [] 
     
     let firstrow item 0 temp-building-list
     if item 0 firstrow = "facility" [ set temp-building-list remove-item 0 temp-building-list]
 
     foreach temp-building-list [
-      let buildnum  item 0 ?
-      let dest item 7 ?
+      let buildnum  item I-ID ?
+      let dest item I-Dest ?
       let mud-slows 0
       if item 8 ? > 0 or item 9 ? > 0 
       [ set mud-slows 1 ]
@@ -37,7 +58,7 @@ to create-buildinglist
       ]
       
       ;; update the building array
-      let new-building replace-item 7 ? dest
+      let new-building replace-item I-Dest ? dest
       set new-building lput patch item 2 ? item 3 ? new-building  ;; index 13 is the center of the building, and we will reset this when the building is created/moded
       let worker-zone (min (list item 4 ? item 5 ? ) / 2 ) - 2
       set new-building lput worker-zone new-building  ;; index 14  ;; keep workers in this radius around the center
@@ -150,11 +171,6 @@ to-report reset-center-of-building [building-num]
     report patch bxcenter bycenter
 end
 
-;;to-report mouse-clicked2?
-;;  report (mouse-was-down? = true and not mouse-down?)
-;;end
-
-
 
 ;;
 ;; move-building
@@ -184,10 +200,7 @@ to move-building
            stop ]
 
          ;; clear the old building
-         ask patches with [building-number = building-to-move] [
-           set building-number  0
-           set pcolor  clr-path
-         ]
+         restore-background building-to-move
 
          ;; create the new building
          let x2  mouse-xcor + temp-building-width
@@ -215,17 +228,50 @@ to move-building
 end
 
 
+;;
+;; restore-background
+;;
+;; Set the building patches to the colours in the preserved list 
+;;
+to restore-background [building-num]
+  foreach background-colours 
+  [
+    if item 0 ? = building-num
+    [
+      let background item 1 ?
+      foreach background
+      [
+        ask patch item 0 ? item 1 ? 
+        [ 
+          set pcolor item 2 ? 
+          set building-number 0
+        ]
+      ]
+      stop
+    ]
+  ]
+end
+
+;;
+;; construct-hovel
+;;
+;; Set up the given range of patches to be a building, and add the required information. 
+;;
 to construct-hovel [building-num x1 y1 x2 y2]
   without-interruption
   [
+    
+   let background [] 
    ask patches with [pxcor >= x1 and pxcor <= x2 and  pycor >= y1 and pycor <= y2]
    [
+     set background lput (list pxcor pycor pcolor) background
      set pcolor  clr-moveable-facility
      set building-number  building-num
      set building-width x2 - x1
      set building-height y2 - y1
    ]
-
+   preserve-background  building-num background 
+ 
    let center reset-center-of-building building-num  ;; find it, update the record
 
    ask patches with [pxcor = x1 + 5 and pycor = y1 + 5]
@@ -234,6 +280,29 @@ to construct-hovel [building-num x1 y1 x2 y2]
      set plabel building-num
    ]
   ]
+end
+
+;;
+;; preserve-background
+;;
+;; For each building ID, add a list of background colours.  If the building is already in the list, replace it. 
+;;
+to preserve-background [ building-num background ]
+  let index 0
+  if is-list? background-colours [
+    foreach background-colours 
+    [
+      if item 0 ? = building-num
+      [
+        set background-colours replace-item index background-colours (list building-num background)
+        stop
+      ]
+      set index index + 1
+    ]
+  ]
+  
+  ;; if we got to here, this building is not in the list
+  set background-colours lput (list building-num background) background-colours
 end
 
 
@@ -251,6 +320,11 @@ to-report work-time [building-num]
 end
 
 
+;;
+;; draw-mainbuilding
+;;
+;; The position of building 1 is hard-coded, and cannot move.
+;;
 to draw-mainbuilding 
   ask patches with [pxcor >= 71 and pycor >= 108 and pxcor <= 114 and pycor <= 149]
   [set pcolor clr-fixed-facility
