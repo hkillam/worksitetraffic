@@ -23,6 +23,16 @@ to add-blocks
    ]
 end
 
+;;
+;; SaveWorldBitmap
+;;
+;; Save the current world view as a bitmap, after killing all of the workers.  We don't want the workers to show up in the bitmap.
+;;
+to SaveWorldBitmap 
+  ask workers [ die ]  ;; we don't want them to show in the bitmap
+  bitmap:export bitmap:from-view "results-bitmap.bmp"
+end
+
 to read-color-file [ colorfile]
 
 

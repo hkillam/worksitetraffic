@@ -74,9 +74,6 @@ to write-results
   ]
   csv:to-file "results.csv" myout
 
-  ask workers [ die ]  ;; we don't want them to show in the bitmap
-  bitmap:export bitmap:from-view "results-bitmap.bmp"
-
 end
 
 
@@ -651,30 +648,30 @@ mean  [no-energy-tick] of workers with [no-energy-tick > 0]
 11
 
 CHOOSER
-10
-198
-106
-243
+9
+237
+105
+282
 building-to-move
 building-to-move
 14 15 18
 1
 
 TEXTBOX
-11
-184
-196
-212
+10
+223
+195
+251
 Click a square to move the building
 11
 0.0
 1
 
 BUTTON
-106
-198
-194
-243
+105
+237
+193
+282
 Move Building
 move-building
 T
@@ -701,6 +698,23 @@ max-turtles-per-square
 1
 dudes
 HORIZONTAL
+
+BUTTON
+11
+157
+101
+190
+Save The World
+SaveWorldBitmap
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
