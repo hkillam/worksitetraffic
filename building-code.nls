@@ -14,7 +14,6 @@ globals [
 to create-buildinglist
     let temp-building-list csv:from-file "buildings.csv"  
     
-    
     let firstrow item 0 temp-building-list
     if item 0 firstrow = "facility" [ set temp-building-list remove-item 0 temp-building-list]
 
@@ -174,13 +173,20 @@ to move-building
          let temp-building-width 20
          let temp-building-height 20
 
-         ;; grab the building size, and clear the old building
+         ;; grab the building size
          ask patches with [building-number = building-to-move] [
-           set pcolor  clr-path
-           set building-number  0
            set temp-building-width  building-width
            set temp-building-height building-height
+         ]
+         
+         if not building-fits? mouse-xcor mouse-ycor temp-building-width temp-building-height
+         [ show "The building will not fit here."
+           stop ]
 
+         ;; clear the old building
+         ask patches with [building-number = building-to-move] [
+           set building-number  0
+           set pcolor  clr-path
          ]
 
          ;; create the new building
@@ -275,3 +281,18 @@ to  make-buildings-from-list[  ]
   
 end
 
+
+;;
+;; building-fits?
+;;
+;; Check the patches here, see if a building is allowed in all of them.
+;;
+to-report building-fits? [thex they width height ]
+  let itfits? true
+  ask patches with [pxcor >= thex and pxcor <= thex + width and pycor >= they and pycor  <= they + height]
+  [
+    if not member? pcolor  (list clr-path clr-mud clr-road clr-danger ) [ set itfits? false ]
+  ]
+  
+  report itfits?
+end
