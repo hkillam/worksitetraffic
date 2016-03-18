@@ -64,20 +64,8 @@ end
 
 to write-results
   write-worker-stats
-
-  ;; building stats
-  let myheaders ["building number" "x" "y" "width" "height" "number of avoiders" "number of bold workers" "average trips for avoiders" "average trips for bold" "average time per trip avoiders" "average time per trip bold" "average ticks mudders get tired"]
-  let myout (list myheaders)
-
-  foreach building-list [
-    let buildnum  item 0 ?
-    if buildnum != "facility" [
-      let mystats building-stats  buildnum
-      set myout lput mystats myout
-    ]
-  ]
-  csv:to-file "results.csv" myout
-
+  write-worker-summaries
+  write-building-stats
 end
 
 
@@ -496,85 +484,6 @@ NIL
 NIL
 1
 
-PLOT
-643
-15
-1036
-165
-Productivity of Building 14
-ticks
-average trips
-0.0
-10.0
-0.0
-10.0
-true
-true
-"" ""
-PENS
-"Avoiding Mud" 1.0 0 -5825686 true "" "plot mean [trips-completed] of  turtles with [avoid-mud? = 1 and home-building = 14]"
-"Slow in Mud" 1.0 0 -13791810 true "" "plot mean [trips-completed] of  turtles with [avoid-mud? = 0 and home-building = 14]"
-
-PLOT
-643
-163
-1036
-313
-Productivity of Building 18
-ticks
-average trips
-0.0
-10.0
-0.0
-10.0
-true
-true
-"" ""
-PENS
-"Avoid Mud" 1.0 0 -5825686 true "" "plot mean [trips-completed] of  turtles with [avoid-mud? = 1 and home-building = 18]"
-"Tired in Mud" 1.0 0 -13791810 true "" "plot mean [trips-completed] of  turtles with [avoid-mud? = 0 and home-building = 18]"
-
-PLOT
-643
-313
-1038
-463
-Productivity of Building 15
-ticks
-average trips
-0.0
-10.0
-0.0
-10.0
-true
-true
-"" ""
-PENS
-"Laughs in face of Danger" 1.0 0 -13791810 true "" "plot mean [trips-completed] of  turtles with [avoid-mud? = 0 and home-building = 15]"
-"Avoids Danger" 1.0 0 -5825686 true "" "plot mean [trips-completed] of  turtles with [avoid-mud? = 1 and home-building = 15]"
-
-MONITOR
-956
-256
-1045
-301
-# Out of energy
-count  turtles with [energy <= 0 and avoid-mud? = 0 and home-building = 18]
-0
-1
-11
-
-MONITOR
-903
-407
-1020
-452
-Ambulance Rides
-count  turtles with [color = black and avoid-mud? = 0 and home-building = 15]
-17
-1
-11
-
 INPUTBOX
 78
 10
@@ -596,61 +505,6 @@ chance-of-injury-percent
 1
 0
 Number
-
-MONITOR
-950
-66
-1039
-111
-# of Avoiders
-count turtles with [avoid-mud? = 1 and home-building = 14]
-17
-1
-11
-
-MONITOR
-950
-110
-1038
-155
-# of mudders
-count turtles with [avoid-mud? = 0 and home-building = 14]
-17
-1
-11
-
-MONITOR
-957
-211
-1045
-256
-# of mudders
-count turtles with [avoid-mud? = 0 and home-building = 18]
-17
-1
-11
-
-MONITOR
-903
-362
-1020
-407
-# of danger lovers
-count turtles with [avoid-mud? = 0 and home-building = 15]
-17
-1
-11
-
-MONITOR
-1066
-225
-1243
-270
-average time when mudders tired
-mean  [no-energy-tick] of workers with [no-energy-tick > 0]
-0
-1
-11
 
 CHOOSER
 9
@@ -719,6 +573,16 @@ NIL
 NIL
 NIL
 NIL
+1
+
+TEXTBOX
+687
+25
+972
+95
+Charts have been moved to results-charts.xlsm\nBe sure to hit the \"refresh all data\" button.\n\nResult files are generated, then imported by the charts file.
+11
+0.0
 1
 
 @#$#@#$#@

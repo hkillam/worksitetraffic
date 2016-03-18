@@ -11,7 +11,7 @@ globals [
   group-history   ;; an array for each group:  source, dest, bold, num-in-group, list of trip counts at each tick
   I-grpsrc
   I-grpdst
-  I-grpbold
+  I-grpavoider
   I-grpcount
 ]
 
@@ -50,7 +50,7 @@ workers-own [
 to setup-workers
   set I-grpsrc   0
   set I-grpdst   1
-  set I-grpbold  2
+  set I-grpavoider  2
   set I-grpcount 3
   set group-history []
 
@@ -59,12 +59,12 @@ to setup-workers
     if buildnum != "facility" [
       let buildname  item I-Name ?
       let numworkers  item I-NumWorkers ? 
-      let dest item 7 ?
+      let dest item I-Dest ?
 
       ;; how does mud/danger affect workers from this building?
-      let mud-slows item 8 ?
-      let mud-tires item 9 ?
-      let danger-harms item 10 ?
+      let mud-slows item I-MudSlows ?
+      let mud-tires item I-MudTires ?
+      let danger-harms item I-Harm ?
 
       create-workers numworkers [
         move-to one-of patches with [building-number = buildnum]
@@ -101,10 +101,10 @@ to record-group-stats
   let new-history []
   foreach group-history
   [
-    let sum-trips  sum [trips-completed] of  turtles with [avoid-mud? = item I-grpbold ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ? ]
-    let avg-trips  mean [trips-completed] of  turtles with [avoid-mud? = item I-grpbold ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ? ]
-    let retired count  turtles with [energy <= 0 and avoid-mud? = item I-grpbold ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ?]
-    let injured count  turtles with [injured? = true  and avoid-mud? = item I-grpbold ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ?]
+    let sum-trips  sum [trips-completed] of  turtles with [avoid-mud? = item I-grpavoider ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ? ]
+    let avg-trips  mean [trips-completed] of  turtles with [avoid-mud? = item I-grpavoider ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ? ]
+    let retired count  turtles with [energy <= 0 and injured? = false  and avoid-mud? = item I-grpavoider ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ?]
+    let injured count  turtles with [injured? = true  and avoid-mud? = item I-grpavoider ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ?]
     set new-history lput (lput (list ticks sum-trips  avg-trips retired injured) ?) new-history
   ]
   set group-history new-history
@@ -130,11 +130,35 @@ to write-worker-stats
 
      ;; create a filename, and write the results
      let filename (word "results-group" item I-grpsrc ? "to" item I-grpdst ?)
-     ifelse item I-grpbold ? = 1
-     [ set filename (word filename "bold.csv") ]
+     ifelse item I-grpavoider ? = 1
      [ set filename (word filename "avoider.csv") ]
+     [ set filename (word filename "bold.csv") ]
      csv:to-file filename myout
   ]
+end
+
+
+;;
+;; write-worker-summaries
+;;
+;; Creates a file listing summaries for each group.  A group is workers who share the same source and dest.
+;;
+to write-worker-summaries
+  ;; building stats
+  let myheaders ["source building" "dest building" "number of avoiders" "number of bold workers" "average trips for avoiders" "average trips for bold" "average time per trip avoiders" "average time per trip bold" "average ticks mudders get tired"]
+  let myout (list myheaders)
+
+  foreach building-list [
+    let buildnum  item I-ID ?
+    foreach item I-Dest ?
+    [
+      ;;let bold-workers count workers with [home-building = buildnum and destination-building = ? and avoid-mud? = 0]
+      let mystats group-stats  buildnum ?
+      set myout lput mystats myout
+    ]
+  ]
+  csv:to-file "results-groupstats.csv" myout
+
 end
 
 

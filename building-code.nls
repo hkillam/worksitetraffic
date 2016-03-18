@@ -9,7 +9,10 @@ globals [
  I-NumWorkers      ;;  6 - total number of workers starting from this building
  I-Dest            ;;  7  - workers in this building are going towards one of these buildings (this item is a list)
  I-MudSlows        ;;  8 - bold workers will be slowed down in the mud
+ I-MudTires        ;;  9
  I-Harm            ;; 10 - workers in this building are harmed if they enter the danger zone
+ I-MinWork         ;; 11 - min time spent in dest 
+ I-MaxWork         ;; 12 - max time spent in dest
  I-Center          ;; 15 - the center patch - do not keep looking up the array and calculating this.
  I-Radius          ;; 16 - limit the worker destinations to a circle in the middle.
  I-CoveredColours  ;; 17 - record all of the colours that were on these patches before the building was made.
@@ -26,7 +29,10 @@ to setup-building-index-values
   set I-NumWorkers      6
   set I-Dest            7
   set I-MudSlows        8
+  set I-MudTires        9
   set I-Harm           10
+  set I-MinWork        11
+  set I-MaxWork        12
   set I-Center         15
   set I-Radius         16
   set I-CoveredColours 17
@@ -76,26 +82,58 @@ end
 
 
 
-to-report building-stats [building-num]
+;;
+;; group-stats
+;;
+;; For each group with the same source and dest, drop some facts.  Used at the end of the run.
+;;
+to-report group-stats [building-num dest]
     let bx1 min [pxcor] of patches with [building-number = building-num]
     let by1 min [pycor] of patches with [building-number = building-num]
     let bwid max [pxcor] of patches with [building-number = building-num] - bx1
     let blen max [pycor] of patches with [building-number = building-num] - by1
 
-    let avoiders count turtles with [avoid-mud? = 1 and home-building = building-num]
-    let bold count turtles with [avoid-mud? = 0 and home-building = building-num]
-    let avoiders-trips  mean [trips-completed] of  turtles with [avoid-mud? = 1 and home-building = building-num]
-    let bold-trips  mean [trips-completed] of  turtles with [avoid-mud? = 0 and home-building = building-num]
+    let avoiders count turtles with [avoid-mud? = 1 and home-building = building-num and destination-building = dest]
+    let bold count turtles with [avoid-mud? = 0 and home-building = building-num and destination-building = dest]
+    let avoiders-trips  mean [trips-completed] of  turtles with [avoid-mud? = 1 and home-building = building-num and destination-building = dest]
+    let bold-trips  mean [trips-completed] of  turtles with [avoid-mud? = 0 and home-building = building-num and destination-building = dest]
     let avoiders-triptime 0
     if avoiders-trips > 0 [ set avoiders-triptime total-ticks / avoiders-trips ]
     let bold-triptime 0
     if bold-trips > 0 [ set bold-triptime  total-ticks / bold-trips]
 
-    let napper-trips 0
-    set napper-trips mean  [no-energy-tick] of workers with [no-energy-tick > 0 and building-num = home-building]
+    let napper-times mean  [no-energy-tick] of workers with [no-energy-tick > 0 and injured? = false and building-num = home-building  and destination-building = dest]
 
-    report (list building-num bx1 by1 bwid blen avoiders bold avoiders-trips bold-trips avoiders-triptime bold-triptime napper-trips)
+    report (list building-num dest avoiders bold avoiders-trips bold-trips avoiders-triptime bold-triptime napper-times)
 end
+
+;;
+;; building-stats
+;;
+;; For each group with the same source and dest, drop some facts.  Used at the end of the run.
+;;
+to write-building-stats 
+  ;; building stats
+  ;; facility  name  x  y  width  height  num workers  dest  slow in mud  tired in mud  risk danger  min time working  max time working
+
+  let myheaders ["facility" "name" "x" "y" "width" "height" "num workers" "dest" "slow in mud" "tired in mud" "risk danger" "min time working" "max time working"]
+  let myout (list myheaders)
+
+  foreach building-list [
+    let buildnum  item I-ID ?
+    if buildnum != "facility" [
+      let bx1 min [pxcor] of patches with [building-number = buildnum]
+      let by1 min [pycor] of patches with [building-number = buildnum]
+      let bwid max [pxcor] of patches with [building-number = buildnum] - bx1
+      let blen max [pycor] of patches with [building-number = buildnum] - by1
+      let dest item 0 item I-Dest ?
+      if length item I-Dest ? > 1 [ set dest (word item 0 item I-Dest ? "," item 1 item I-Dest ?) ]  ;; note - only allows two, need more complex processing for more.
+      set myout lput (list buildnum item I-Name ? bx1 by1 bwid blen item I-NumWorkers ? dest item I-MudSlows ? item I-MudTires ? item I-Harm ? item I-MinWork ? item I-MaxWork ?) myout
+    ]
+  ]
+  csv:to-file "results-buildings.csv" myout
+end
+
 
 ;;
 ;; center-of
