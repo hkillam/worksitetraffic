@@ -50,7 +50,8 @@ to go  ;; forever button
   [
      check-goal         ;; when we reach our goal, set a new goal
      move-worker self
-   ]
+  ]
+  record-group-stats
 
   tick
 
@@ -62,10 +63,11 @@ to go  ;; forever button
 end
 
 to write-results
-  ;; start with column headers
+  write-worker-stats
+
+  ;; building stats
   let myheaders ["building number" "x" "y" "width" "height" "number of avoiders" "number of bold workers" "average trips for avoiders" "average trips for bold" "average time per trip avoiders" "average time per trip bold" "average ticks mudders get tired"]
   let myout (list myheaders)
-
 
   foreach building-list [
     let buildnum  item 0 ?
@@ -329,6 +331,7 @@ to move-worker [little-dude]
             [
                 if random 100 < chance-of-injury-percent
                 [ set color black
+                    set injured? true
                     set energy 0
                 ]
                 set dice-tossed? 1

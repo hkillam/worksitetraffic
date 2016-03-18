@@ -4,8 +4,11 @@ globals [
  building-list     ;; read from input file, then tweaked.
  background-colours ;; preserve colours of patches behind a building.
  
- I-ID              ;; 0  - ID of the building
- I-Dest            ;; 7  - workers in this building are going towards one of these buildings (this item is a list)
+ I-ID              ;;  0  - ID of the building
+ I-Name            ;;  1
+ I-NumWorkers      ;;  6 - total number of workers starting from this building
+ I-Dest            ;;  7  - workers in this building are going towards one of these buildings (this item is a list)
+ I-MudSlows        ;;  8 - bold workers will be slowed down in the mud
  I-Harm            ;; 10 - workers in this building are harmed if they enter the danger zone
  I-Center          ;; 15 - the center patch - do not keep looking up the array and calculating this.
  I-Radius          ;; 16 - limit the worker destinations to a circle in the middle.
@@ -19,7 +22,10 @@ globals [
 ;
 to setup-building-index-values
   set I-ID              0
+  set I-Name            1
+  set I-NumWorkers      6
   set I-Dest            7
+  set I-MudSlows        8
   set I-Harm           10
   set I-Center         15
   set I-Radius         16

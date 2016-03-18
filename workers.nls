@@ -7,6 +7,13 @@
 
 breed [ workers ]
 
+globals [
+  group-history   ;; an array for each group:  source, dest, bold, num-in-group, list of trip counts at each tick
+  I-grpsrc
+  I-grpdst
+  I-grpbold
+  I-grpcount
+]
 
 
 workers-own [
@@ -31,6 +38,7 @@ workers-own [
   trail-id              ;; which string of breadcrumbs is he following
   breadcrumb-reverse    ;; true if starting at end and going to beginning
   breadcrumb-num        ;; how far along the string of breadcrumbs is he
+  injured?              ;; has this worker been injured?
 ]
 
 
@@ -40,12 +48,17 @@ workers-own [
 ;; called from setup function to read building list and generate all of the workers
 ;;
 to setup-workers
+  set I-grpsrc   0
+  set I-grpdst   1
+  set I-grpbold  2
+  set I-grpcount 3
+  set group-history []
 
   foreach building-list [
-    let buildnum  item 0 ?
+    let buildnum  item I-ID ?
     if buildnum != "facility" [
-      let buildname  item 1 ?
-      let numworkers  item 6 ? 
+      let buildname  item I-Name ?
+      let numworkers  item I-NumWorkers ? 
       let dest item 7 ?
 
       ;; how does mud/danger affect workers from this building?
@@ -62,10 +75,68 @@ to setup-workers
         if (buildnum = 15) [ set color1 115 set color2 125  ]
         init-worker color1 color2 dest buildnum mud-slows mud-tires danger-harms
       ]
+      
+      ;; create the list of group records
+      if is-list? dest [
+        foreach dest
+        [
+          let bold-workers count workers with [home-building = buildnum and destination-building = ? and avoid-mud? = 0]
+          let avoiders count workers with [home-building = buildnum and destination-building = ? and avoid-mud? = 1]
+          set group-history lput  (list buildnum ? 1 bold-workers) group-history
+          set group-history lput  (list buildnum ? 0 avoiders) group-history
+        ]
+      ]
     ]
   ]
 
 end
+
+
+;;
+;; record-group-stats
+;;
+;; For every tick, grab the current stats on each group (trips completed, tired workers)
+;;
+to record-group-stats
+  let new-history []
+  foreach group-history
+  [
+    let sum-trips  sum [trips-completed] of  turtles with [avoid-mud? = item I-grpbold ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ? ]
+    let avg-trips  mean [trips-completed] of  turtles with [avoid-mud? = item I-grpbold ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ? ]
+    let retired count  turtles with [energy <= 0 and avoid-mud? = item I-grpbold ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ?]
+    let injured count  turtles with [injured? = true  and avoid-mud? = item I-grpbold ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ?]
+    set new-history lput (lput (list ticks sum-trips  avg-trips retired injured) ?) new-history
+  ]
+  set group-history new-history
+end
+
+;;
+;; write-worker-stats
+;;
+;; Create a file for each group, show all of the stats for every tick.
+;;
+to write-worker-stats
+  ;; start with column headers
+  let myheaders ["ticks" "total trips" "average trips" "retired" "injured"]
+  
+
+  foreach group-history
+  [
+     let myout (list myheaders)
+     
+     foreach ? [
+       if is-list? ? [ set myout lput ? myout ]
+     ]
+
+     ;; create a filename, and write the results
+     let filename (word "results-group" item I-grpsrc ? "to" item I-grpdst ?)
+     ifelse item I-grpbold ? = 1
+     [ set filename (word filename "bold.csv") ]
+     [ set filename (word filename "avoider.csv") ]
+     csv:to-file filename myout
+  ]
+end
+
 
 
 ;;
@@ -79,6 +150,7 @@ to init-worker [  colorA colorB dest-buildings home-plate mud-slows mud-tires da
       set destination-building dest
       set size 1
       set breed workers
+      set injured? false
       set trips-completed 0
       set energy total-ticks
       set avoid-mud? one-of [0 1]
