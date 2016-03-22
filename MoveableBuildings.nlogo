@@ -31,9 +31,7 @@ to setup ; linked with setup button on interface
 
   ;; diagnostic - show the breadcrumb trails for a moment.
   ;; note that these trails are invisible to the workers, and do not affect worker movement.
-  foreach breadcrumb-trails [
-;;    draw-breadcrumb-trail ?
-  ]
+  ;;  foreach breadcrumb-trails [draw-breadcrumb-trail ?]
 
   setup-workers
 
@@ -496,10 +494,10 @@ total-ticks
 Number
 
 INPUTBOX
-13
-342
-141
-402
+9
+318
+137
+378
 chance-of-injury-percent
 2
 1
@@ -514,7 +512,7 @@ CHOOSER
 building-to-move
 building-to-move
 14 15 18
-1
+2
 
 TEXTBOX
 10
@@ -532,7 +530,7 @@ BUTTON
 193
 282
 Move Building
-move-building
+move-building-to-click
 T
 1
 T
@@ -544,10 +542,10 @@ NIL
 1
 
 SLIDER
-12
-408
-196
-441
+8
+384
+192
+417
 max-turtles-per-square
 max-turtles-per-square
 1
@@ -581,6 +579,33 @@ TEXTBOX
 972
 95
 Charts have been moved to results-charts.xlsm\nBe sure to hit the \"refresh all data\" button.\n\nResult files are generated, then imported by the charts file.
+11
+0.0
+1
+
+BUTTON
+754
+123
+875
+156
+Shuffle buildings
+make-buildings-dance
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+TEXTBOX
+891
+123
+1155
+179
+Note:  This function is SLOW.  It looks for every place a building will fit, and choses one at random.
 11
 0.0
 1

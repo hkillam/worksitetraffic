@@ -101,10 +101,14 @@ to record-group-stats
   let new-history []
   foreach group-history
   [
-    let sum-trips  sum [trips-completed] of  turtles with [avoid-mud? = item I-grpavoider ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ? ]
-    let avg-trips  mean [trips-completed] of  turtles with [avoid-mud? = item I-grpavoider ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ? ]
-    let retired count  turtles with [energy <= 0 and injured? = false  and avoid-mud? = item I-grpavoider ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ?]
-    let injured count  turtles with [injured? = true  and avoid-mud? = item I-grpavoider ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ?]
+   ;; if (count workers with [avoid-mud? = item I-grpavoider ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ? ]) < 1
+   ;; [
+     ;; show (word "no turtles record-group.  home: " item I-grpsrc ? " dest: " item I-grpdst ? " avoider: " item I-grpavoider ?)
+   ;; ]
+    let sum-trips  sum [trips-completed] of  workers with [avoid-mud? = item I-grpavoider ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ? ]
+    let avg-trips  mean [trips-completed] of  workers with [avoid-mud? = item I-grpavoider ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ? ]
+    let retired count  workers with [energy <= 0 and injured? = false  and avoid-mud? = item I-grpavoider ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ?]
+    let injured count  workers with [injured? = true  and avoid-mud? = item I-grpavoider ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ?]
     set new-history lput (lput (list ticks sum-trips  avg-trips retired injured) ?) new-history
   ]
   set group-history new-history
@@ -152,7 +156,6 @@ to write-worker-summaries
     let buildnum  item I-ID ?
     foreach item I-Dest ?
     [
-      ;;let bold-workers count workers with [home-building = buildnum and destination-building = ? and avoid-mud? = 0]
       let mystats group-stats  buildnum ?
       set myout lput mystats myout
     ]

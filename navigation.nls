@@ -484,6 +484,7 @@ if debug-mode = true [      show "moving along trail" ]
   
 ;;  show (word "lost in a snowstorm - can't see breadcrumbs " breadcrumb-num " of " item trail-id breadcrumb-trails )
   ;; uhhhh...  face it anyway, i guess
+  if not is-list? crumb [show "this isn't even a crumb.  so crumby"]
   face-nowrap patch item 0 crumb  item 1 crumb
 end
 

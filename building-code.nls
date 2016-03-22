@@ -6,6 +6,8 @@ globals [
  
  I-ID              ;;  0  - ID of the building
  I-Name            ;;  1
+ I-Width           ;;  4
+ I-Height          ;;  5
  I-NumWorkers      ;;  6 - total number of workers starting from this building
  I-Dest            ;;  7  - workers in this building are going towards one of these buildings (this item is a list)
  I-MudSlows        ;;  8 - bold workers will be slowed down in the mud
@@ -26,6 +28,8 @@ globals [
 to setup-building-index-values
   set I-ID              0
   set I-Name            1
+  set I-Width           4
+  set I-Height          5
   set I-NumWorkers      6
   set I-Dest            7
   set I-MudSlows        8
@@ -102,7 +106,9 @@ to-report group-stats [building-num dest]
     let bold-triptime 0
     if bold-trips > 0 [ set bold-triptime  total-ticks / bold-trips]
 
-    let napper-times mean  [no-energy-tick] of workers with [no-energy-tick > 0 and injured? = false and building-num = home-building  and destination-building = dest]
+    let nappers workers with [no-energy-tick > 0 and injured? = false and building-num = home-building  and destination-building = dest]
+    let napper-times 0
+    if count nappers > 0 [set napper-times mean  [no-energy-tick] of nappers]
 
     report (list building-num dest avoiders bold avoiders-trips bold-trips avoiders-triptime bold-triptime napper-times)
 end
@@ -217,12 +223,12 @@ end
 
 
 ;;
-;; move-building
+;; move-building-to-click
 ;;
 ;; If the UI button "move building" is down, respond to a mouse click. 
 ;; Move the bottom left corner of the building to the point where the mouse was clicked.  Replace with "path". 
 ;;
-to move-building
+to move-building-to-click
   
   ;; respond after a mouse click is released
   if mouse-down? [ set mouse-was-down? true ]
@@ -230,26 +236,7 @@ to move-building
     set mouse-was-down? false 
  
     without-interruption [
-         let temp-building-width 20
-         let temp-building-height 20
-
-         ;; grab the building size
-         ask patches with [building-number = building-to-move] [
-           set temp-building-width  building-width
-           set temp-building-height building-height
-         ]
-         
-         if not building-fits? mouse-xcor mouse-ycor temp-building-width temp-building-height
-         [ show "The building will not fit here."
-           stop ]
-
-         ;; clear the old building
-         restore-background building-to-move
-
-         ;; create the new building
-         let x2  mouse-xcor + temp-building-width
-         let y2   mouse-ycor + temp-building-height
-         construct-hovel building-to-move mouse-xcor mouse-ycor x2 y2
+         move-building building-to-move patch mouse-xcor mouse-ycor
          
          ;; delete old breadcrumbs, make new ones.  People too, we need them cleared to make breadcrumbs.
          ask workers [ die ]
@@ -257,18 +244,40 @@ to move-building
          create-breadcrumbs-from_buildinglist
          setup-workers
 
-         ;; before execution, move workers to their building.  If already executing, reset their directions.
-         ifelse ticks = 0 [
-           ask workers with [home-building = building-to-move][
-              move-to one-of patches with [building-number = building-to-move]
-           ]
-         ][
-            redirect-workers
-         ]
-         stop
        ]
   ]
 
+end
+
+
+
+;;
+;; move-building
+;;
+;; Move the given building to the given patch.  Worry about the cleanup after (redrawing breadcrums, recreating people).
+;;
+to move-building [id thepatch]
+   let temp-building-width 20
+   let temp-building-height 20
+
+   ;; grab the building size
+   ask patches with [building-number = id] [
+     set temp-building-width  building-width
+     set temp-building-height building-height
+   ]
+   
+   if not building-fits? [pxcor] of thepatch [pycor] of thepatch temp-building-width temp-building-height
+   [ show "The building will not fit here."
+     stop ]
+
+   ;; clear the old building
+   restore-background id
+
+   ;; create the new building
+   let x2  [pxcor] of thepatch + temp-building-width
+   let y2   [pycor] of thepatch + temp-building-height
+   construct-hovel id [pxcor] of thepatch [pycor] of thepatch x2 y2
+   
 end
 
 
@@ -414,3 +423,54 @@ to-report building-fits? [thex they width height ]
   
   report itfits?
 end
+
+;; make-buildings-dance
+;;
+;; Chose a random location for every building.  Let's dance.  
+to make-buildings-dance
+  foreach building-list [
+    random-locate item I-ID ?
+  ]
+
+   ;; delete old breadcrumbs, make new ones.  People too, we need them cleared to make breadcrumbs.
+   ask workers [ die ]
+   set breadcrumb-trails []
+   create-breadcrumbs-from_buildinglist
+   setup-workers
+
+end
+
+;;
+;; building-fits?
+;;
+;; Check the patches here, see if a building is allowed in all of them.
+;;
+to random-locate [buildingid]
+
+  ;; look up building size
+  let len 4
+  let wid 4
+  foreach building-list [
+    if buildingid = item I-ID ? [
+      set len item I-height ?
+      set wid item I-width ?
+    ]
+  ]
+  
+  let possibilities []
+  without-interruption [
+    no-display
+    ask patches with [member? pcolor (list clr-path clr-mud clr-road clr-danger) ]
+    [
+      if building-fits? pxcor pycor wid len 
+      [
+        set possibilities lput  self possibilities
+      ]
+    ]
+    display
+  ]
+
+  move-building buildingid one-of possibilities
+
+end
+
