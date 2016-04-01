@@ -374,14 +374,13 @@ end
 
 
 ;;
-;; draw-mainbuilding
+;; mark-mainbuilding
 ;;
-;; The position of building 1 is hard-coded, and cannot move.
+;; The position of building 1 is defined in the bitmp file, by patach color.
 ;;
-to draw-mainbuilding 
-  ask patches with [pxcor >= 71 and pycor >= 108 and pxcor <= 114 and pycor <= 149]
-  [set pcolor clr-fixed-facility
-    set building-number 1]   
+to mark-mainbuilding 
+  ask patches with [pcolor = clr-fixed-facility]
+  [ set building-number 1]   
 end
 
 ;;
@@ -404,7 +403,7 @@ to  make-buildings-from-list[  ]
       construct-hovel buildnum x1 y1 x2 y2
     ]
   ]
-  draw-mainbuilding 
+  mark-mainbuilding 
   
 end
 

@@ -2,3 +2,4 @@ facility,name,x,y,width,height,num workers,dest,slow in mud,tired in mud,risk da
 14,long term laydown,34,115,25,15,375,1,1,1,0,17,20,,375
 18,rebar yard,120,60,20,10,150,14,0,1,0,13,20,,150
 15,scaffold storage,73,160,14,20,280,"14,18",0,1,1,10,12,,280
+3,,142,71,20,15,100,15,0,1,0,44,44,,
