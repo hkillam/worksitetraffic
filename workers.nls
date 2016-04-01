@@ -25,7 +25,6 @@ workers-own [
   home-building         ;; place this worker starts out
   destination-building  ;; number of the building they are currently heading to
   goal                  ;; random space within the building they are heading to
-  previous-patch        ;; last place this dude was standing
   dice-tossed?          ;; for people in the danger zone, toss the dice once per trip
   no-energy-tick        ;; the tick count when this worker runs out of energy (group 2 - tired in mud)
   go-right?             ;; true if this turtle looks to the right for an open route.  set this when the goal is set
@@ -39,6 +38,8 @@ workers-own [
   breadcrumb-reverse    ;; true if starting at end and going to beginning
   breadcrumb-num        ;; how far along the string of breadcrumbs is he
   injured?              ;; has this worker been injured?
+  bump-count            ;; how often does this worker step aside because of the crowd ahead
+  jammed-count          ;; how often does this worker not move at all because of the crowd ahead
 ]
 
 
@@ -101,15 +102,14 @@ to record-group-stats
   let new-history []
   foreach group-history
   [
-   ;; if (count workers with [avoid-mud? = item I-grpavoider ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ? ]) < 1
-   ;; [
-     ;; show (word "no turtles record-group.  home: " item I-grpsrc ? " dest: " item I-grpdst ? " avoider: " item I-grpavoider ?)
-   ;; ]
-    let sum-trips  sum [trips-completed] of  workers with [avoid-mud? = item I-grpavoider ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ? ]
-    let avg-trips  mean [trips-completed] of  workers with [avoid-mud? = item I-grpavoider ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ? ]
-    let retired count  workers with [energy <= 0 and injured? = false  and avoid-mud? = item I-grpavoider ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ?]
-    let injured count  workers with [injured? = true  and avoid-mud? = item I-grpavoider ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ?]
-    set new-history lput (lput (list ticks sum-trips  avg-trips retired injured) ?) new-history
+    let thegroup workers with [avoid-mud? = item I-grpavoider ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ? ]
+    if count thegroup > 0 [
+       let sum-trips  sum [trips-completed] of  thegroup
+       let avg-trips  mean [trips-completed] of  thegroup
+       let retired count  thegroup with [energy <= 0 and injured? = false ]
+       let injured count  thegroup with [injured? = true ]
+       set new-history lput (lput (list ticks sum-trips  avg-trips retired injured) ?) new-history
+    ]
   ]
   set group-history new-history
 end
@@ -175,6 +175,8 @@ to init-worker [  colorA colorB dest-buildings home-plate mud-slows mud-tires da
       let dest one-of dest-buildings
       set home-building home-plate
       set destination-building dest
+      set bump-count 0
+      set jammed-count 0
       set size 1
       set breed workers
       set injured? false
@@ -246,7 +248,6 @@ to set-new-destination [new-dest new-searching add-trip ]
       face goal
       set searching?  new-searching
       set trips-completed trips-completed + add-trip
-      set previous-patch patch 0 0
       set dice-tossed? 0
       set hugging-edges-steps 0
       set blue-sky-steps 0

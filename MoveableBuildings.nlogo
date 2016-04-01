@@ -31,7 +31,7 @@ to setup ; linked with setup button on interface
 
   ;; diagnostic - show the breadcrumb trails for a moment.
   ;; note that these trails are invisible to the workers, and do not affect worker movement.
-  ;;  foreach breadcrumb-trails [draw-breadcrumb-trail ?]
+ ;;   foreach breadcrumb-trails [draw-breadcrumb-trail ?]
 
   setup-workers
 
@@ -327,6 +327,26 @@ to move-worker [little-dude]
 
 
          ;; check for someone on that patch, step to the right (unless we are already hugging an edge)
+         if (count (turtles-on (patch-ahead 1)) >= max-turtles-per-square
+            and [building-number] of patch-ahead 1 = 0)
+         [
+            set nextpatch [pcolor] of patch-right-and-ahead 90 1
+            ifelse ( member? nextpatch  allowed-patches and count (turtles-on (patch-right-and-ahead 90 1)) < max-turtles-per-square)
+            [
+               move-to patch-right-and-ahead 90 step-size
+               set blue-sky-steps 0
+               set bump-count bump-count + 1
+               ;;show "bump"
+               set energy energy - 1
+               stop
+            ][
+               set jammed-count jammed-count + 1
+            ]
+            stop
+         ]
+
+
+         ;; check for someone on that patch, step to the right (unless we are already hugging an edge)
 ;;         if (count (turtles-on (patch-ahead 1)) >= max-turtles-per-square
 ;;            and [building-number] of patch-ahead 1 = 0)
 ;         [
@@ -463,7 +483,7 @@ CHOOSER
 new-path-type
 new-path-type
 "mud" "path" "danger"
-1
+0
 
 BUTTON
 118
