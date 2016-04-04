@@ -33,8 +33,8 @@ end
 to create-breadcrumbs-from_buildinglist
   
     foreach building-list [
-      let buildnum  item 0 ?
-      let dest item 7 ?
+      let buildnum  item I-ID ?
+      let dest item I-Dest ?
 
       ;; make sure there is a breadcrumb trail for every destination
       foreach dest [

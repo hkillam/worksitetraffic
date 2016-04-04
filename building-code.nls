@@ -4,6 +4,7 @@ globals [
  building-list     ;; read from input file, then tweaked.
  background-colours ;; preserve colours of patches behind a building.
  
+ ;; indicies for building-list
  I-ID              ;;  0  - ID of the building
  I-Name            ;;  1
  I-Width           ;;  4
@@ -57,10 +58,6 @@ to create-buildinglist
     foreach temp-building-list [
       let buildnum  item I-ID ?
       let dest item I-Dest ?
-      let mud-slows 0
-      if item 8 ? > 0 or item 9 ? > 0 
-      [ set mud-slows 1 ]
-      let danger-harms item 10 ?
       
       ;; check destination(s) for a single value or a list
       ;; currently, this only works for two destinations.  need to loop for more than two
@@ -139,7 +136,7 @@ to write-building-stats
       set myout lput (list buildnum item I-Name ? bx1 by1 bwid blen item I-NumWorkers ? dest item I-MudSlows ? item I-MudTires ? item I-Harm ? item I-MinWork ? item I-MaxWork ?) myout
     ]
   ]
-  csv:to-file "results-buildings.csv" myout
+  csv:to-file "C:\\WorksiteTrafficResults\\results-buildings.csv" myout
 end
 
 

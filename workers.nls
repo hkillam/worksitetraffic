@@ -38,6 +38,7 @@ workers-own [
   injured?              ;; has this worker been injured?
   bump-count            ;; how often does this worker step aside because of the crowd ahead
   jammed-count          ;; how often does this worker not move at all because of the crowd ahead
+  time-in-obstacle      ;; how much time is spent wading in the mud
 ]
 
 
@@ -128,7 +129,7 @@ to write-worker-stats
      ]
 
      ;; create a filename, and write the results
-     let filename (word "results-group" item I-grpsrc ? "to" item I-grpdst ?)
+     let filename (word "C:\\WorksiteTrafficResults\\results-group" item I-grpsrc ? "to" item I-grpdst ?)
      ifelse item I-grpbold ? = true
      [ set filename (word filename "bold.csv") ]
      [ set filename (word filename "avoider.csv") ]
@@ -155,7 +156,7 @@ to write-worker-summaries
       set myout lput mystats myout
     ]
   ]
-  csv:to-file "results-groupstats.csv" myout
+  csv:to-file "C:\\WorksiteTrafficResults\\results-groupstats.csv" myout
 
 end
 
@@ -173,6 +174,7 @@ to init-worker [  colorA colorB dest-buildings home-plate]
       set destination-building dest
       set bump-count 0
       set jammed-count 0
+      set time-in-obstacle 0
       set size 1
       set breed workers
       set injured? false

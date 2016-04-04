@@ -306,6 +306,12 @@ to move-worker [little-dude]
          ;; everyone!
          set energy energy - 1
          forward step-size
+
+         ;; record muddy steps
+         if  member? pcolor (list clr-slowmud clr-tiredmud clr-danger)
+         [  set time-in-obstacle time-in-obstacle + 1]
+
+         ;; tired yet?
          if energy < 1 and no-energy-tick = 0 [
            set color black
            set no-energy-tick  ticks
