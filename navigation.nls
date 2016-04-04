@@ -12,11 +12,11 @@
 ;;
 ;; calls create-breadcrumbs 5 times, returns the shortest path
 ;;
-to-report blaze-trail [src dst bold danger-harms]
+to-report blaze-trail [src dst bold]
     let besttrail (list 0 0 0 100000)
     let newtrail (list 0 0 0 1000)
     foreach [1 2 3 4 5] [
-       set newtrail create-breadcrumbs src dst bold danger-harms  
+       set newtrail create-breadcrumbs src dst bold  
        if length newtrail > 6 and item 3 newtrail < item 3 besttrail 
        [ set besttrail newtrail ]
     ]
@@ -35,28 +35,17 @@ to create-breadcrumbs-from_buildinglist
     foreach building-list [
       let buildnum  item 0 ?
       let dest item 7 ?
-      let mud-slows 0
-      if item 8 ? > 0 or item 9 ? > 0 
-      [ set mud-slows 1 ]
-      let danger-harms item 10 ?
-
-      foreach dest [
-        if not trail-exists buildnum ? 0 0 [
-          
-        ]
-      ]
-
 
       ;; make sure there is a breadcrumb trail for every destination
       foreach dest [
-        if not trail-exists buildnum ? 0 0 [
-            let newtrail blaze-trail buildnum ? 0 0
+        if not trail-exists buildnum ? true [
+            let newtrail blaze-trail buildnum ? true
             if length newtrail > 6 [
                set breadcrumb-trails lput newtrail breadcrumb-trails
             ]
         ]
-        if not trail-exists buildnum ? mud-slows danger-harms [
-            let newtrail blaze-trail buildnum ? mud-slows danger-harms
+        if not trail-exists buildnum ? false [
+            let newtrail blaze-trail buildnum ? false
             if length newtrail > 6 [
               set breadcrumb-trails lput newtrail breadcrumb-trails
             ]
@@ -70,11 +59,11 @@ end
 ;;
 ;; do we have breadcrumbs for this trail?
 ;;
-to-report trail-exists [src dst bold danger-harms]
+to-report trail-exists [src dst bold]
   foreach breadcrumb-trails [
-    if item 0 ? = src and item 1 ? = dst and item 2 ? = bold and item 3 ? = danger-harms
+    if item 0 ? = src and item 1 ? = dst and item 2 ? = bold 
     [ report true ]
-    if item 1 ? = src and item 0 ? = dst and item 2 ? = bold and item 3 ? = danger-harms
+    if item 1 ? = src and item 0 ? = dst and item 2 ? = bold
     [ report true ]
   ]  
   report false
@@ -84,16 +73,15 @@ end
 ;; create-breadcrumbs
 ;;
 ;; returns an arrary of [src dst bold length [x,y] [x,y] [x,y]...]
-;; call this function before workers are created, all will die at the end.
 ;;
-to-report create-breadcrumbs [src dst bold danger-harms]
+to-report create-breadcrumbs [src dst bold]
   let breadcrumbs (list src dst bold 0)
   let show-test-msgs false
   let stop-spinning 800
   
-  create-temp-worker src dst bold danger-harms
+  create-scout src dst bold true
   
-  ask workers
+  ask scouts
   [
     
        ;; march until we find the building or we have gone in 1000 circles
@@ -239,12 +227,12 @@ end
 to draw-breadcrumb-trail [path]
 without-interruption [  
   
-  create-temp-worker 1 1 1 1
+  create-scout 1 1 1 1
   
   if length path > 4 [
     
     let pt1 item 4 path
-    ask workers [ 
+    ask scouts [ 
       set color random (9) * 10 + 5
       setxy  item 0 pt1 item 1 pt1
       pen-down 
@@ -252,12 +240,12 @@ without-interruption [
     
     foreach path [
       if is-list? ? [
-        ask workers [ move-to patch item 0 ? item 1 ?  ]
+        ask scouts [ move-to patch item 0 ? item 1 ?  ]
       ]
     ]
   ]
   
-  ask workers [ die ]
+  ask scouts [ die ]
 ]
 end  ;; draw-breadcrumb-trail
 
@@ -325,25 +313,6 @@ to-report path-clear [pt1 pt2 radius]
   report isclear
 end
 
-;;
-;; create-temp-worker
-;;
-;; creates and initializes a temporary worker
-;;
-to create-temp-worker [src dst bold danger-harms]
-  create-workers 1 
-  ask workers [
-      move-to one-of patches with [building-number = src]
-      init-worker red red (list dst) src 1 1 1
-      set shape "arrow"
-      set size 3
-      ifelse bold = 1 [
-        set-worker-bold red danger-harms
-      ][
-        set-worker-avoider green
-      ]
-  ]
-end
 
 ;;
 ;; bestheading-path
@@ -359,10 +328,6 @@ to-report bestheading-path [mypaths]
      if  item 1 ? > step-count [
        set myheading  item 0 ?
        set step-count  item 1 ?
-       if item 1 ? > 23 [ 
-         set blue-sky-steps 20
-       
-       ]
      ]
    ]
    report myheading

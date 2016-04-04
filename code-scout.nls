@@ -1,0 +1,60 @@
+;;
+;; SCOUTS
+;;
+;; Before the workers show up, some scouts travel around finding the best paths, and leaving maps.
+;;
+
+breed [ scouts ]
+
+scouts-own [
+  allowed-patches       ;; colours of patches this guy can step on
+  avoid-mud?            ;; 1 to go around mud, 0 to go through it
+  home-building         ;; place this worker starts out
+  destination-building  ;; number of the building they are currently heading to
+  goal                  ;; random space within the building they are heading to
+  go-right?             ;; true if this turtle looks to the right for an open route.  set this when the goal is set
+  hugging-edges-steps   ;; if the turtle starts hugging the edge, this is how many more steps to do it for
+  is-bold?              ;; will this scout go through obsticles?
+]
+
+
+;;
+;; create-scout
+;;
+;; creates and initializes a temporary worker
+;;
+to create-scout [src dst bold righty?]
+  create-scouts 1 
+  ask scouts [
+      move-to one-of patches with [building-number = src]
+      ;;init-scout dst src bold righty?
+      set home-building src
+      set destination-building dst
+      set shape "arrow"
+      set size 3
+      set breed scouts
+      set avoid-mud? 1
+      set is-bold? bold
+
+      let thegoal one-of patches with [building-number = dst]
+      ask patch pxcor pycor [
+         set thegoal shoot-a-dart dst
+      ]
+      set goal thegoal
+      face-nowrap goal
+      set hugging-edges-steps 0
+
+      set allowed-patches (list clr-path clr-road clr-moveable-facility )
+      if destination-building = 1 [
+        set allowed-patches lput clr-fixed-facility allowed-patches
+      ]
+      
+      if bold = true [
+        set allowed-patches lput clr-slowmud allowed-patches
+        set allowed-patches lput clr-tiredmud allowed-patches
+        set allowed-patches lput clr-danger allowed-patches
+      ]
+
+  ]
+end
+

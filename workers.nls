@@ -9,30 +9,28 @@ breed [ workers ]
 
 globals [
   group-history   ;; an array for each group:  source, dest, bold, num-in-group, list of trip counts at each tick
+  
+  ;; indexes in the group-history array
   I-grpsrc
   I-grpdst
-  I-grpavoider
+  I-grpbold
   I-grpcount
 ]
 
 
 workers-own [
   searching?            ;; 1 if going to the materials, 0 if returning\
+  is-bold?              ;; true, will go through obsticles
   energy                ;; start at tick-count, at zero just quit
-  allowed-patches       ;; colours of patches this guy can step on - will replace "losest-road"
-  avoid-mud?            ;; 1 to go around mud, 0 to go through it
+  allowed-patches       ;; colours of patches this guy can step on
   trips-completed       ;; number of round-trip journies
   home-building         ;; place this worker starts out
   destination-building  ;; number of the building they are currently heading to
   goal                  ;; random space within the building they are heading to
   dice-tossed?          ;; for people in the danger zone, toss the dice once per trip
-  no-energy-tick        ;; the tick count when this worker runs out of energy (group 2 - tired in mud)
+  no-energy-tick        ;; the tick count when this worker runs out of energy
   go-right?             ;; true if this turtle looks to the right for an open route.  set this when the goal is set
   hugging-edges-steps   ;; if the turtle starts hugging the edge, this is how many more steps to do it for
-  blue-sky-steps        ;; if we are wandering in open spaces, take a few steps before re-calculating
-  slow-in-mud?          ;; from the input file - how is the worker affected by mud
-  tired-in-mud?         ;; from the input file - how is the worker affected by mud
-  risk-danger?          ;; from the input file - how is the worker affected by mud
   working-ticks         ;; count down how long a worker stays in a work building
   trail-id              ;; which string of breadcrumbs is he following
   breadcrumb-reverse    ;; true if starting at end and going to beginning
@@ -51,7 +49,7 @@ workers-own [
 to setup-workers
   set I-grpsrc   0
   set I-grpdst   1
-  set I-grpavoider  2
+  set I-grpbold  2   ;; true/false
   set I-grpcount 3
   set group-history []
 
@@ -62,29 +60,25 @@ to setup-workers
       let numworkers  item I-NumWorkers ? 
       let dest item I-Dest ?
 
-      ;; how does mud/danger affect workers from this building?
-      let mud-slows item I-MudSlows ?
-      let mud-tires item I-MudTires ?
-      let danger-harms item I-Harm ?
-
       create-workers numworkers [
         move-to one-of patches with [building-number = buildnum]
-        let color1 95
-        let color2 85
+        let color1 75
+        let color2 65
         if (buildnum = 14) [ set color1 orange set color2 yellow ]
         if (buildnum = 18) [ set color1 95 set color2 85 ]
         if (buildnum = 15) [ set color1 115 set color2 125  ]
-        init-worker color1 color2 dest buildnum mud-slows mud-tires danger-harms
+        init-worker color1 color2 dest buildnum
       ]
       
       ;; create the list of group records
       if is-list? dest [
         foreach dest
         [
-          let bold-workers count workers with [home-building = buildnum and destination-building = ? and avoid-mud? = 0]
-          let avoiders count workers with [home-building = buildnum and destination-building = ? and avoid-mud? = 1]
-          set group-history lput  (list buildnum ? 1 bold-workers) group-history
-          set group-history lput  (list buildnum ? 0 avoiders) group-history
+          let bold-workers count workers with [home-building = buildnum and destination-building = ? and is-bold? = true]
+          let avoiders count workers with [home-building = buildnum and destination-building = ? and is-bold? = false]
+          ;;show (word "bold: " bold-workers " chicken: " avoiders)
+          set group-history lput  (list buildnum ? true bold-workers) group-history
+          set group-history lput  (list buildnum ? false avoiders) group-history
         ]
       ]
     ]
@@ -102,7 +96,7 @@ to record-group-stats
   let new-history []
   foreach group-history
   [
-    let thegroup workers with [avoid-mud? = item I-grpavoider ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ? ]
+    let thegroup workers with [is-bold? = item I-grpbold ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ? ]
     if count thegroup > 0 [
        let sum-trips  sum [trips-completed] of  thegroup
        let avg-trips  mean [trips-completed] of  thegroup
@@ -124,6 +118,7 @@ to write-worker-stats
   let myheaders ["ticks" "total trips" "average trips" "retired" "injured"]
   
 
+
   foreach group-history
   [
      let myout (list myheaders)
@@ -134,9 +129,9 @@ to write-worker-stats
 
      ;; create a filename, and write the results
      let filename (word "results-group" item I-grpsrc ? "to" item I-grpdst ?)
-     ifelse item I-grpavoider ? = 1
-     [ set filename (word filename "avoider.csv") ]
+     ifelse item I-grpbold ? = true
      [ set filename (word filename "bold.csv") ]
+     [ set filename (word filename "avoider.csv") ]
      csv:to-file filename myout
   ]
 end
@@ -149,7 +144,7 @@ end
 ;;
 to write-worker-summaries
   ;; building stats
-  let myheaders ["source building" "dest building" "number of avoiders" "number of bold workers" "average trips for avoiders" "average trips for bold" "average time per trip avoiders" "average time per trip bold" "average ticks mudders get tired"]
+  let myheaders ["source building" "dest building" "number of avoiders" "number of bold workers" "average trips for avoiders" "average trips for bold" "average time per trip avoiders" "average time per trip bold" "average ticks mudders get tired" "num injured workers"]
   let myout (list myheaders)
 
   foreach building-list [
@@ -170,8 +165,9 @@ end
 ;; init-worker
 ;;
 ;; Initializes a single worker, personality, destination.
+;; input: colours for bold/timid, list of possible destinations, home
 ;;
-to init-worker [  colorA colorB dest-buildings home-plate mud-slows mud-tires danger-harms]
+to init-worker [  colorA colorB dest-buildings home-plate]
       let dest one-of dest-buildings
       set home-building home-plate
       set destination-building dest
@@ -182,22 +178,16 @@ to init-worker [  colorA colorB dest-buildings home-plate mud-slows mud-tires da
       set injured? false
       set trips-completed 0
       set energy total-ticks
-      set avoid-mud? one-of [0 1]
-      ifelse avoid-mud? = 0
+      set is-bold? one-of [true false]
+      ifelse is-bold? = true
       [  
-         set-worker-bold colorA danger-harms
+         set-worker-bold colorA
       ][
          set-worker-avoider colorB
       ]
 
-
       set no-energy-tick 0
-
       set-new-destination dest 1 0
-      set blue-sky-steps 0
-      set slow-in-mud? mud-slows
-      set tired-in-mud? mud-tires
-      set risk-danger? danger-harms
 end
 
 ;;
@@ -205,13 +195,14 @@ end
 ;;
 ;; give a worker "bold" properties, charging through mud, laughing at danger, unstoppable (unless it's mother calls)
 ;;
-to set-worker-bold [colorA danger-harms]
-   set allowed-patches (list clr-path clr-road clr-moveable-facility )   ;; add red for testinng breadcrumbs
-   set allowed-patches lput clr-mud allowed-patches
-   set color colorA
-   if danger-harms = 1 [
-     set allowed-patches lput clr-danger allowed-patches
-   ]
+to set-worker-bold [colorA]
+  set color colorA
+  set is-bold? true
+   set allowed-patches (list clr-path clr-road clr-moveable-facility )
+   set allowed-patches lput clr-slowmud allowed-patches
+   set allowed-patches lput clr-tiredmud allowed-patches
+   set allowed-patches lput clr-danger allowed-patches
+   
     ;; new requirement in December - let the main building be a possible destination.
     if destination-building = 1 [
          set allowed-patches lput clr-fixed-facility allowed-patches
@@ -224,7 +215,8 @@ end
 ;; give a worker "avoider" properties, going around mud or danger
 ;;
 to set-worker-avoider [colorB]
-  set allowed-patches (list clr-path clr-road clr-moveable-facility  red )
+  set is-bold? false
+  set allowed-patches (list clr-path clr-road clr-moveable-facility )
   set color colorB
   ;; new requirement in December - let the main building be a possible destination.
   if destination-building = 1 [
@@ -237,6 +229,7 @@ end
 ;;
 ;; set-new-destination
 ;;
+;; workers - follow the breadcrumbs
 ;; called when:  create people, arrive at destination, buildings move
 ;;
 to set-new-destination [new-dest new-searching add-trip ]
@@ -250,7 +243,6 @@ to set-new-destination [new-dest new-searching add-trip ]
       set trips-completed trips-completed + add-trip
       set dice-tossed? 0
       set hugging-edges-steps 0
-      set blue-sky-steps 0
 
       ;; tell turtle which direction it will need to turn to go away from the center
       let centerheading towardsxy 105 105
@@ -261,11 +253,9 @@ to set-new-destination [new-dest new-searching add-trip ]
       ]
       
       ;; choose a trail of breadcrumbs
-      let bold 1
-      if avoid-mud? = true or avoid-mud? = 1 [ set bold 0 ]
       let src home-building
       if new-dest = home-building [set src destination-building]
-      let crumbly select-breadcrumbs src new-dest bold
+      let crumbly select-breadcrumbs src new-dest is-bold?
 
       if length breadcrumb-trails > 6 [
          if length crumbly > 2 [
@@ -280,4 +270,19 @@ to set-new-destination [new-dest new-searching add-trip ]
       ]
 end
 
+
+;;
+;; redirect-workers
+;;
+;; called when:  a building moves after "go" is pressed.
+;;
+to redirect-workers
+         ;; some workers were heading to this building, redirect them to the new destination
+         ask workers with [destination-building = building-to-move and searching? = true][
+           set-new-destination destination-building searching? 0
+         ]
+         ask workers with [home-building = building-to-move and searching? = false][
+           set-new-destination home-building searching? 0
+         ]
+end
 

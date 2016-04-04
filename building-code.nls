@@ -97,10 +97,10 @@ to-report group-stats [building-num dest]
     let bwid max [pxcor] of patches with [building-number = building-num] - bx1
     let blen max [pycor] of patches with [building-number = building-num] - by1
 
-    let avoiders count turtles with [avoid-mud? = 1 and home-building = building-num and destination-building = dest]
-    let bold count turtles with [avoid-mud? = 0 and home-building = building-num and destination-building = dest]
-    let avoiders-trips  mean [trips-completed] of  turtles with [avoid-mud? = 1 and home-building = building-num and destination-building = dest]
-    let bold-trips  mean [trips-completed] of  turtles with [avoid-mud? = 0 and home-building = building-num and destination-building = dest]
+    let avoiders count workers with [is-bold? = false and home-building = building-num and destination-building = dest]
+    let bold count workers with [is-bold? = true and home-building = building-num and destination-building = dest]
+    let avoiders-trips  mean [trips-completed] of  workers with [is-bold? = false and home-building = building-num and destination-building = dest]
+    let bold-trips  mean [trips-completed] of  workers with [is-bold? = true and home-building = building-num and destination-building = dest]
     let avoiders-triptime 0
     if avoiders-trips > 0 [ set avoiders-triptime total-ticks / avoiders-trips ]
     let bold-triptime 0
@@ -109,8 +109,10 @@ to-report group-stats [building-num dest]
     let nappers workers with [no-energy-tick > 0 and injured? = false and building-num = home-building  and destination-building = dest]
     let napper-times 0
     if count nappers > 0 [set napper-times mean  [no-energy-tick] of nappers]
+    
+    let num-injured count workers with [injured? = true and building-num = home-building  and destination-building = dest]
 
-    report (list building-num dest avoiders bold avoiders-trips bold-trips avoiders-triptime bold-triptime napper-times)
+    report (list building-num dest avoiders bold avoiders-trips bold-trips avoiders-triptime bold-triptime napper-times num-injured)
 end
 
 ;;
@@ -417,7 +419,7 @@ to-report building-fits? [thex they width height ]
   let itfits? true
   ask patches with [pxcor >= thex and pxcor <= thex + width and pycor >= they and pycor  <= they + height]
   [
-    if not member? pcolor  (list clr-path clr-mud clr-road clr-danger ) [ set itfits? false ]
+    if not member? pcolor  (list clr-path clr-slowmud clr-tiredmud clr-road clr-danger ) [ set itfits? false ]
   ]
   
   report itfits?
@@ -459,7 +461,7 @@ to random-locate [buildingid]
   let possibilities []
   without-interruption [
     no-display
-    ask patches with [member? pcolor (list clr-path clr-mud clr-road clr-danger) ]
+    ask patches with [member? pcolor (list clr-path clr-slowmud clr-tiredmud clr-road clr-danger) ]
     [
       if building-fits? pxcor pycor wid len 
       [
