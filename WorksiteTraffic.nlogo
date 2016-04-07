@@ -38,7 +38,7 @@ to go  ;; forever button
   ask workers
   [
      check-goal         ;; when we reach our goal, set a new goal
-     move-worker self
+     move-worker
   ]
   record-group-stats
 
@@ -203,139 +203,7 @@ to-report is-allowed-patch [thepatch theradius]
   report permitted
 end
 
-to face-longest-path [little-dude path-list]
 
-    ;; we are already hugging an edge, keep doing that.
-    if hugging-edges-steps > 0 [
-      stop
-    ]
-
-    ;; check for no open path, and start hugging edges
-    if length path-list = 0 [
-       set hugging-edges-steps 10;
-       set color red;
-       stop
-    ]
-
-    ;;no-display
-
-    ;; look for the longest path, grab that angle
-    let myheading  heading
-    let step-count  0
-    foreach path-list [
-      if  item 1 ? > step-count [
-         set myheading  item 0 ?
-         set step-count  item 1 ?
-      ]
-    ]
-
-    ;;display
-
-    ;; turn to the longest path
-    set heading myheading
-
-end
-
-
-
-to move-worker [little-dude]
-
-    ;; if they are done for the day, stop
-    if color = black [
-      stop;
-    ]
-
-    ;; let the worker spend some time working int the dest building.
-    if working-ticks > 0 [
-      set working-ticks working-ticks - 1
-      stop
-    ]
-
-    without-interruption
-     [
-
-         ;;set-direction little-dude
-         follow-the-yellow-brick-road
-         let step-size 1
-
-         let nextpatch [pcolor] of patch-ahead 1
-
-         if not member? nextpatch  allowed-patches [
-           set hugging-edges-steps 10
-;;           show "course correction"
-;;           stop;
-         ]
-
-         ;; check for sticky situations
-         if pcolor = clr-slowmud [ set step-size .5 ]
-         if pcolor = clr-tiredmud [ set energy energy - 1]
-
-          if pcolor = clr-danger and pcolor = clr-danger and dice-tossed? = 0
-          [
-              if random 100 < chance-of-injury-percent
-              [ set color black
-                  set injured? true
-                  set energy 0
-                  move-to patch 1 1
-              ]
-              set dice-tossed? 1
-
-          ]
-
-
-
-         ;; check for someone on that patch, step to the right (unless we are already hugging an edge)
-         if (count (turtles-on (patch-ahead 1)) >= max-turtles-per-square
-            and [building-number] of patch-ahead 1 = 0)
-         [
-            set nextpatch [pcolor] of patch-right-and-ahead 90 1
-            ifelse ( member? nextpatch  allowed-patches and count (turtles-on (patch-right-and-ahead 90 1)) < max-turtles-per-square)
-            [
-               move-to patch-right-and-ahead 90 step-size
-               set bump-count bump-count + 1
-               ;;show "bump"
-               set energy energy - 1
-               stop
-            ][
-               set jammed-count jammed-count + 1
-            ]
-            stop
-         ]
-
-
-         ;; everyone!
-         set energy energy - 1
-         forward step-size
-
-         ;; record muddy steps
-         if  member? pcolor (list clr-slowmud clr-tiredmud clr-danger)
-         [  set time-in-obstacle time-in-obstacle + 1]
-
-         ;; tired yet?
-         if energy < 1 and no-energy-tick = 0 [
-           set color black
-           set no-energy-tick  ticks
-           pen-up
-           move-to patch 1 1
-         ]
-
-    ]
-end
-
-
-to check-goal  ;; worker procedure - if they have reached the goal, set a new one
-
-  ;; did we reach the destination?  return to home!
-  if building-number = destination-building and searching? = 1 [
-    set-new-destination  home-building 0 0
-    set working-ticks  (work-time destination-building)
-  ]
-
-  ;; did we reach the home?  go to destination
-  if building-number = home-building and searching? = 0 [
-    set-new-destination  destination-building 1 1
-  ]
-end
 @#$#@#$#@
 GRAPHICS-WINDOW
 214
