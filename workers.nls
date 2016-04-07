@@ -333,36 +333,54 @@ to move-worker
       stop
     ]
 
+     let step-size 1
+     let effort 1
+     let chance-of-injury-percent 0
+
+
     without-interruption
      [
 
          ;;set-direction little-dude
          follow-the-yellow-brick-road
-         let step-size 1
 
          let nextpatch [pcolor] of patch-ahead 1
 
          if not member? nextpatch  allowed-patches [
            set hugging-edges-steps 10
-;;           show "course correction"
-;;           stop;
          ]
 
          ;; check for sticky situations
-         if pcolor = clr-slowmud [ set step-size .5 ]
-         if pcolor = clr-tiredmud [ set energy energy - 1]
+         if pcolor = clr-slowmud 
+         [ set step-size obslow-speed 
+           set effort obslow-energy
+           set chance-of-injury-percent obslow-injury
+         ]
+         if pcolor = clr-tiredmud 
+         [ 
+           set step-size obtired-speed 
+           set effort obtired-energy
+           set chance-of-injury-percent obtired-injury
+         ]
+         if pcolor = clr-danger
+         [
+           set step-size obdanger-speed 
+           set effort obdanger-energy
+           set chance-of-injury-percent obdanger-injury
+         ]
 
-          if pcolor = clr-danger and pcolor = clr-danger and dice-tossed? = 0
-          [
-              if random 100 < chance-of-injury-percent
-              [ set color black
+
+         ;; roll the dice if we are in a danger zone
+         if chance-of-injury-percent > 0 and dice-tossed? = 0 [
+             if random 100 < chance-of-injury-percent
+             [ 
+                  set color black
                   set injured? true
                   set energy 0
                   move-to patch 1 1
               ]
               set dice-tossed? 1
-
-          ]
+         ]
 
 
 
@@ -376,7 +394,7 @@ to move-worker
                move-to patch-right-and-ahead 90 step-size
                set bump-count bump-count + 1
                ;;show "bump"
-               set energy energy - 1
+               set energy energy - effort
                stop
             ][
                set jammed-count jammed-count + 1
@@ -386,7 +404,7 @@ to move-worker
 
 
          ;; and move!
-         set energy energy - 1
+         set energy energy - effort
          forward step-size
 
          ;; record muddy steps

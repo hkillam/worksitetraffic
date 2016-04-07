@@ -25,9 +25,10 @@ scouts-own [
 ;;
 to create-scout [src dst bold righty?]
   create-scouts 1 
+  
   ask scouts [
+     
       move-to one-of patches with [building-number = src]
-      ;;init-scout dst src bold righty?
       set home-building src
       set destination-building dst
       set shape "arrow"
@@ -35,7 +36,8 @@ to create-scout [src dst bold righty?]
       set breed scouts
       set avoid-mud? 1
       set is-bold? bold
-
+      set go-right? righty?
+      
       let thegoal one-of patches with [building-number = dst]
       ask patch pxcor pycor [
          set thegoal shoot-a-dart dst

@@ -1,10 +1,10 @@
-patch type,netlogo color id,rgb value,colour name
-clr-path,39,#EBE2DA,beige
-clr-slowmud,35,#9D6E48,light brown
-clr-road,37,#C4A891,med brown
-clr-danger,27,#F6A673,orange
-clr-moveable-facility,55,#59B03C,green
-clr-fixed-facility,122,#460B2C,dark purple
-clr-fixed-facility2,127,#C975A6,lighter purple
-clr-void,0,#000000,black
-clr-tiredmud,47,#F4F483,light yellow
+patch type,netlogo color id,rgb value,colour name,speed,energy,injury,,Notes
+clr-path,39,#EBE2DA,beige,1,1,0,,"Columns speed, energy, injury are for obsticle types."
+clr-slowmud,35,#9D6E48,light brown,0.5,1,0,,"Speed:  1 is regular speed (one step per tick), .5 is half speed, 2 is running"
+clr-road,37,#C4A891,med brown,,,,,Energy:  1 is normal (one unit of energy per tick)  2 is getting tired twice as fast.  0 is taking a ride on a golf cart
+clr-danger,27,#F6A673,orange,1,1,2,,Injury:  0 is normal (no chance of injury).  2 is a 2% chance of injury.  100 is certain death.
+clr-moveable-facility,55,#59B03C,green,,,,,
+clr-fixed-facility,122,#460B2C,dark purple,,,,,
+clr-fixed-facility2,127,#C975A6,lighter purple,,,,,
+clr-void,0,#000000,black,,,,,
+clr-tiredmud,47,#F4F483,light yellow,1,2,0,,

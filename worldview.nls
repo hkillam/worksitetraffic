@@ -16,6 +16,28 @@ globals [
   clr-fixed-facility
   clr-fixed-facility2
   clr-void
+  
+  ;; obsticle behavioiurs - read from colour file.
+  obdanger-speed
+  obdanger-energy
+  obdanger-injury
+  obslow-speed
+  obslow-energy
+  obslow-injury
+  obtired-speed
+  obtired-energy
+  obtired-injury
+  
+  ;; indicies in the array read from the colour file
+  I-title           ;; 0 - will match our constant clr- values
+  I-clrnum          ;; 1 - netlogo colour ID
+  I-rgb             ;; 2 - rgb value for the colour
+  I-readablename    ;; 3 - an easy to read name - not used
+  I-speed           ;; 4 - steps taken in single tick - default is 1
+  I-energy          ;; 5 - energy used in single tick - normal is 1
+  I-injury          ;; 6 - percent chance of injury on trip through an obssticle.  normal is 0
+
+
 ]
 
 
@@ -24,6 +46,46 @@ patches-own [
   building-width    ;;
   building-height   ;;  for moving and rebuilding.
 ]
+
+
+;;
+;; setup-colours
+;;
+;; give the colour constants values before reading the colour file
+;;
+to setup-colours
+  ;; default colours
+  set clr-path 39   ; beige
+  set clr-road 37   ; med brown
+  set clr-slowmud 35    ; light brown
+  set clr-tiredmud 47  ;  yellow
+  set clr-danger 27 ; oranage
+  set clr-moveable-facility 55  ;green
+  set clr-fixed-facility 122 ; dark purple
+  set clr-fixed-facility2 127 ; lighter purple
+  set clr-void  0    ;  black, out of the map
+
+  ;; behaviours in the obsticle patches
+  set   obdanger-speed      1
+  set   obdanger-energy     1
+  set   obdanger-injury     2
+  set   obslow-speed        0.5
+  set   obslow-energy       1
+  set   obslow-injury       0
+  set   obtired-speed       1
+  set   obtired-energy      2
+  set   obtired-injury      0
+  
+  ;; indicies in the colour file/list
+  set I-title   0
+  set I-clrnum  1         ;; 1 - netlogo colour ID
+  set I-rgb     2         ;; 2 - rgb value for the colour
+  set I-readablename    3         ;; 3 - an easy to read name - not used
+  set I-speed   4         ;; 4 - steps taken in single tick - default is 1
+  set I-energy  5         ;; 5 - energy used in single tick - normal is 1
+  set I-injury  6         ;; 6 - chance of injury on trip through an obssticle.  normal is 0
+  
+end
 
 
 ;;
@@ -63,38 +125,59 @@ to SaveWorldBitmap
   bitmap:export bitmap:from-view "results-bitmap.bmp"
 end
 
+
+;;
+;; read-color-file
+;;
+;; read values in colours.csv and define our patch values and behaviours
+;;
 to read-color-file [ colorfile]
-
-
-  ;; default colours
-  set clr-path 39   ; beige
-  set clr-road 37   ; med brown
-  set clr-slowmud 35    ; light brown
-  set clr-tiredmud 47  ;  yellow
-  set clr-danger 27 ; oranage
-  set clr-moveable-facility 55  ;green
-  set clr-fixed-facility 122 ; dark purple
-  set clr-fixed-facility2 127 ; lighter purple
-  set clr-void  0    ;  black, out of the map
 
   ;; read colourfile
   file-open colorfile
   let  labels csv:from-row file-read-line
   while [ not file-at-end? ] [
     let row csv:from-row file-read-line
-    let clrpatch item 0 row
-    let clrnum item 1 row
-    let clrrgb item 2 row
-    let clrname item 3 row
+    let clrpatch item I-title row
+    let clrnum item I-clrnum row
+    let clrrgb item I-rgb row
+    let clrname item I-name row
     if (clrpatch = "clr-path") [ set clr-path  clrnum ]
     if (clrpatch = "clr-road") [ set clr-road  clrnum ]
-    if (clrpatch = "clr-slowmud") [ set clr-slowmud  clrnum ]
-    if (clrpatch = "clr-tiredmud") [ set clr-tiredmud  clrnum ]
-    if (clrpatch = "clr-danger") [ set clr-danger  clrnum ]
     if (clrpatch = "clr-moveable-facility") [ set clr-moveable-facility  clrnum ]
     if (clrpatch = "clr-fixed-facility") [ set clr-fixed-facility  clrnum ]
     if (clrpatch = "clr-fixed-facility2") [ set clr-fixed-facility2  clrnum ]
     if (clrpatch = "clr-void") [ set clr-void  clrnum ]
+
+    ;; obsticle patches also have behaviours, read them too
+    if (clrpatch = "clr-slowmud") 
+    [ 
+      set clr-slowmud  clrnum
+      set obslow-speed item I-speed row
+      set obslow-energy item I-energy row
+      set obslow-injury  item I-injury row
+      show (word "slow " obslow-speed obslow-energy obslow-injury)
+    ]
+
+    if (clrpatch = "clr-tiredmud") 
+    [ 
+      set clr-tiredmud  clrnum 
+      set obtired-speed item I-speed row
+      set obtired-energy item I-energy row
+      set obtired-injury  item I-injury row
+      show (word "tired " obtired-speed obtired-energy obtired-injury)
+    ]
+
+    if (clrpatch = "clr-danger") 
+    [ 
+      set clr-danger  clrnum 
+      set obdanger-speed item I-speed row
+      set obdanger-energy item I-energy row
+      set obdanger-injury  item I-injury row
+      show (word "danger " obdanger-speed obdanger-energy obdanger-injury)
+    ]
+
+
   ]
   file-close
 end

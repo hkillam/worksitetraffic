@@ -1,0 +1,10 @@
+patch type,netlogo color id,rgb value,colour name
+clr-path,39,#EBE2DA,beige
+clr-slowmud,35,#9D6E48,light brown
+clr-road,37,#C4A891,med brown
+clr-danger,27,#F6A673,orange
+clr-moveable-facility,55,#59B03C,green
+clr-fixed-facility,122,#460B2C,dark purple
+clr-fixed-facility2,127,#C975A6,lighter purple
+clr-void,0,#000000,black
+clr-tiredmud,47,#F4F483,light yellow

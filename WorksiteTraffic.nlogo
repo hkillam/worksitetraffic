@@ -15,6 +15,7 @@ to setup ; linked with setup button on interface
   set-default-shape turtles "person"
   set breadcrumb-trails []
   set building-list []
+  setup-colours
   setup-patches "WorkplaceTraffic.bmp" "colours.csv"
   create-buildinglist
   make-buildings-from-list
@@ -138,72 +139,6 @@ to-report possible-path-list [little-dude theradius show-test-msgs]
 end
 
 
-;;  test-path
-;;  test for length of clear path, and if destination is on this path
-;;
-;;  returns list of [path-length all-clear dest-ahead]
-;;  path-length will be the length of clear path, up to a max of the input max-steps
-;;  all clear means the path never found an obsticle.
-;;  dest-ahead means we are pointed the right way, path-length will show distance to destination.
-to-report test-path [max-steps theradius]
-
-  let step-counter 0
-
-    ;; testing
-  ;;if pxcor > 72 and pxcor < 76 and max-steps = 1000 [  show "turned towards it" ]
-
-  while [step-counter < max-steps] [
-    set step-counter step-counter + 1
-
-    ;; is the destination ahead?
-    if [building-number] of  patch-ahead step-counter  = destination-building
-    [
-      ;;if pxcor > 72 and pxcor < 76 and max-steps = 1000 [  show (word "looking right at it " pxcor pycor) ]
-      report (list step-counter true true)
-    ]
-    ;; what is the colour of the next patch in the path we are checking?
-    let nextpatch [pcolor] of patch-ahead step-counter
-
-    ;; see if we hit the end of the open path
-    if (not is-allowed-patch patch-ahead step-counter theradius )
-    [
-      if step-counter = 1 [
-        report (list 0 false false)
-      ]  ;  totally dead end, don't return this path at all
-      report (list step-counter false false)
-    ]
-  ]
-
-  ;; we checked far enough, didn't encounter obsticles or destination
-  report (list step-counter true false)
-end
-
-;; when checking if the next patch is a permitted colour, this function lets you check the buffer as well
-;;
-;; returns:  true/false
-;;
-to-report is-allowed-patch [thepatch theradius]
-  let permitted true
-  let debug-mode false
-  let allowedpatchclrs allowed-patches
- ;; if who = 3815 or who = 3647
-  set debug-mode false
-
-  ifelse theradius <= 1 [
-    if (not member? [pcolor] of thepatch  allowedpatchclrs) [ set permitted false ]
-;;    if debug-mode = true [ show ( word "color: " pcolor " allowed: "  allowedpatchclrs " permitted?: " permitted " should be: " member? pcolor  allowedpatchclrs)  ]
-  ][
-    ask thepatch [
-       ask patches in-radius theradius [
-
-         if not member? pcolor allowedpatchclrs [ set permitted false ]
-       ]
-    ]
-  ]
-  report permitted
-end
-
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 214
@@ -310,17 +245,6 @@ INPUTBOX
 70
 total-ticks
 2000
-1
-0
-Number
-
-INPUTBOX
-9
-318
-137
-378
-chance-of-injury-percent
-2
 1
 0
 Number
