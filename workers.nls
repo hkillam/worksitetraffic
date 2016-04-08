@@ -351,18 +351,18 @@ to move-worker
          ]
 
          ;; check for sticky situations
-         if pcolor = clr-slowmud 
+         if pcolor = clr-slowmud and is-bold? = true
          [ set step-size obslow-speed 
            set effort obslow-energy
            set chance-of-injury-percent obslow-injury
          ]
-         if pcolor = clr-tiredmud 
+         if pcolor = clr-tiredmud and is-bold? = true
          [ 
            set step-size obtired-speed 
            set effort obtired-energy
            set chance-of-injury-percent obtired-injury
          ]
-         if pcolor = clr-danger
+         if pcolor = clr-danger and is-bold? = true
          [
            set step-size obdanger-speed 
            set effort obdanger-energy

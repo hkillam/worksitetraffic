@@ -156,7 +156,6 @@ to read-color-file [ colorfile]
       set obslow-speed item I-speed row
       set obslow-energy item I-energy row
       set obslow-injury  item I-injury row
-      show (word "slow " obslow-speed obslow-energy obslow-injury)
     ]
 
     if (clrpatch = "clr-tiredmud") 
@@ -165,7 +164,6 @@ to read-color-file [ colorfile]
       set obtired-speed item I-speed row
       set obtired-energy item I-energy row
       set obtired-injury  item I-injury row
-      show (word "tired " obtired-speed obtired-energy obtired-injury)
     ]
 
     if (clrpatch = "clr-danger") 
@@ -174,7 +172,6 @@ to read-color-file [ colorfile]
       set obdanger-speed item I-speed row
       set obdanger-energy item I-energy row
       set obdanger-injury  item I-injury row
-      show (word "danger " obdanger-speed obdanger-energy obdanger-injury)
     ]
 
 

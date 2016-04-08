@@ -138,7 +138,6 @@ to-report possible-path-list [little-dude theradius show-test-msgs]
   report path-list
 end
 
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 214

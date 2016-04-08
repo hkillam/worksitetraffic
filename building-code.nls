@@ -370,7 +370,7 @@ to-report work-time [building-num]
   
   ;; special case for building 1, because it is not in the building list.
   if building-num = 1 [
-      report random (10) + 10
+      report random (40) + 90
   ]
 
   report 0
