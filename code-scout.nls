@@ -6,6 +6,15 @@
 
 breed [ scouts ]
 
+globals [
+  ;; indexes in a single breadcrumbs array
+  I-trailsrc     ;; 0 - source building where this trail starts
+  I-traildest    ;; 1 - destination building where the trail ends
+  I-trailbold    ;; 2 - does the trail lead through mud/danger or around it?
+  I-traillength  ;; 3 - total distance of this trail
+  I-firstpoint   ;; 4 - an array of x, y coordinates.  Remaining points are added after this one.
+]
+
 scouts-own [
   allowed-patches       ;; colours of patches this guy can step on
   avoid-mud?            ;; 1 to go around mud, 0 to go through it
@@ -16,6 +25,20 @@ scouts-own [
   hugging-edges-steps   ;; if the turtle starts hugging the edge, this is how many more steps to do it for
   is-bold?              ;; will this scout go through obsticles?
 ]
+
+
+;;
+;; setup-scouts
+;;
+;; called from setup function to initialize values for this module
+;;
+to setup-scouts
+  set I-trailsrc     0  ;; 0 - source building where this trail starts
+  set I-traildest    1  ;; 1 - destination building where the trail ends
+  set I-trailbold    2  ;; 2 - does the trail lead through mud/danger or around it?
+  set I-traillength  3  ;; 3 - total distance of this trail
+  set I-firstpoint   4  ;; 4 - an array of x, y coordinates.  Remaining points are added after this one.
+end  
 
 
 ;;
@@ -60,3 +83,222 @@ to create-scout [src dst bold righty?]
   ]
 end
 
+;;
+;; create-breadcrumbs-from_buildinglist
+;;
+;; AFTER building list is built,
+;; AFTER buildings are all drawn,
+;; BEFORE workers are created
+;;
+to create-breadcrumbs-from_buildinglist
+  
+    foreach building-list [
+      let buildnum  item I-ID ?
+      let dest item I-Dest ?
+
+      ;; make sure there is a breadcrumb trail for every destination
+      foreach dest [
+        if not trail-exists buildnum ? true [
+            let newtrail blaze-trail buildnum ? true
+            if length newtrail > 6 [
+               set breadcrumb-trails lput newtrail breadcrumb-trails
+            ]
+        ]
+        if not trail-exists buildnum ? false [
+            let newtrail blaze-trail buildnum ? false
+            if length newtrail > 6 [
+              set breadcrumb-trails lput newtrail breadcrumb-trails
+            ]
+        ]
+      ]
+    ]  
+    
+
+end
+
+
+;;
+;; create-breadcrumbs
+;;
+;; returns an arrary of [src dst bold length [x,y] [x,y] [x,y]...]
+;;
+to-report create-breadcrumbs [src dst bold righty?]
+  let breadcrumbs (list src dst bold 0)
+  let show-test-msgs false
+  let stop-spinning 800
+  
+  create-scout src dst bold righty?
+  
+  ask scouts
+  [
+    
+       if show-crooked-paths = true [
+           pen-down
+       ]
+    
+       ;; march until we find the building or we have gone in 1000 circles
+       while [[building-number] of patch-ahead 1 != dst and length breadcrumbs < stop-spinning] [
+         let lastheading heading
+         
+         ;; decide where to go, and get there
+         move-scout-one-step
+         
+         ;; add our current position to the list of breadcrumbs.
+         set breadcrumbs add-breadcrumb breadcrumbs
+
+       ]
+       set breadcrumbs lput (list pxcor pycor) breadcrumbs  ;; add final point to the list
+       pen-up
+
+       ;; optimize the list (unless we hit 1000 points and gave up)
+       if length breadcrumbs < stop-spinning [
+         let index 4
+         while [index + 2 < length breadcrumbs] [
+           set breadcrumbs optimize-breadcrumbs breadcrumbs index  ;; start at 5th item, first four are not points
+           set index index + 1
+         ] 
+       ]
+       
+       if length breadcrumbs > 4 and length breadcrumbs < stop-spinning [
+         ;; measure the list
+         let pathlength measure-breadcrumb-trail breadcrumbs
+         set breadcrumbs replace-item 3 breadcrumbs pathlength
+       ]       
+       ;; done with this temp, kill him
+       die
+  ]  
+  
+  if length breadcrumbs > stop-spinning - 1 or length breadcrumbs < 6 [
+     ;; show "scout is lost, send someone else"
+     set breadcrumbs []
+  ]
+  
+  report breadcrumbs
+end   ;; create-breadcrumbs
+
+
+
+
+;;
+;; move-scout-one-step
+;;
+;; tell a scout to look around and decide where to move, and go there
+;; uses the range of possible paths and chooses the best, or it hugs an edge.
+;; 
+;;
+to move-scout-one-step
+  
+     ;; first check for a nice clear path with a buffer, then try a clear skinny path
+     let mypaths []
+     if hugging-edges-steps < 1 [
+       ;; get list of all possible paths
+       set  mypaths possible-path-list self scout-size false
+       if length mypaths = 0 [ 
+         set mypaths possible-path-list self 0 false
+       ]  ;; if there aren't good paths with some buffer, try again with no buffer
+     ]
+     
+     ;; if we dont have a path, start hugging the edge
+     if length mypaths = 0 and hugging-edges-steps < 1
+     [ set hugging-edges-steps 9 ] 
+     
+     
+     ifelse hugging-edges-steps > 0[
+       ;; there are no paths, hug the edges, turn towards the next step
+       set hugging-edges-steps hugging-edges-steps - 1
+       let ret turn-along-edge  
+     ][
+       ;; choose the best path, and turn towards the next step
+       let myheading bestheading-path mypaths
+       set heading myheading
+     ]
+     
+     ;; double-check to see if it is a safe step, and move one.
+     let nextpatchcolor [pcolor] of patch-ahead 1
+     if ( member? nextpatchcolor  allowed-patches) 
+     [ forward 1 ]
+     
+     
+end
+
+;;
+;; blaze-trail
+;;
+;; calls create-breadcrumbs 5 times, returns the shortest path
+;;
+to-report blaze-trail [src dst bold]
+    let besttrail (list 0 0 0 100000)
+    let newtrail (list 0 0 0 1000)
+    foreach [1 2 3] [
+       ;; right
+       set newtrail create-breadcrumbs src dst bold true 
+       if length newtrail > 6 and item 3 newtrail < item 3 besttrail 
+       [ set besttrail newtrail ]
+       ;; left
+       set newtrail create-breadcrumbs src dst bold false 
+       if length newtrail > 6 and item 3 newtrail < item 3 besttrail 
+       [ set besttrail newtrail ]
+    ]
+    report besttrail
+end
+
+
+;;
+;; measure-breadcrumb-trail
+;;
+;; pass in a breadcrumb trail, return a total length
+;; used in turtle context
+;;
+to-report measure-breadcrumb-trail [trail]
+   let thelength 0
+   hatch 1 [
+
+      let pt1 item 4 trail
+      setxy  item 0 pt1 item 1 pt1
+      
+      foreach trail [
+        if is-list? ? [
+          set thelength thelength + distancexy item 0 ? item 1 ?
+          move-to patch item 0 ? item 1 ?
+        ]
+      ]
+      die;
+   ]
+   
+   report thelength
+end
+
+
+;;
+;; add-breadcrumb
+;;
+;; adds the current location of the current worker to the end of the breadcrumbs array
+;; returns the breadcrumbs
+;;
+to-report add-breadcrumb [breadcrumbs]
+   set breadcrumbs lput (list pxcor pycor) breadcrumbs
+   report breadcrumbs
+end
+;;
+;; optimize-breadcrumbs
+;;
+;; look at three points starting at index.  If there is a direct path 
+;; from the first to third, remove the second.  And repeat.
+;; returns the shortened breadcrumbs 
+to-report optimize-breadcrumbs [breadcrumbs index]
+  
+  if index + 2 < length breadcrumbs [
+    
+    let pt1 item index breadcrumbs
+    let pt2 item (index + 2) breadcrumbs
+    
+    if path-clear pt1 pt2 2 = true [
+      ;; remove the point that is not needed, recurse deeper in.
+      set breadcrumbs remove-item (index + 1) breadcrumbs
+      set breadcrumbs optimize-breadcrumbs breadcrumbs index
+    ]
+    
+  ]
+
+  report breadcrumbs
+end

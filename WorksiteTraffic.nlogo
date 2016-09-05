@@ -19,11 +19,17 @@ to setup ; linked with setup button on interface
   setup-patches "WorkplaceTraffic.bmp" "colours.csv"
   create-buildinglist
   make-buildings-from-list
+  setup-scouts
   create-breadcrumbs-from_buildinglist
 
   ;; diagnostic - show the breadcrumb trails for a moment.
   ;; note that these trails are invisible to the workers, and do not affect worker movement.
- ;;   foreach breadcrumb-trails [draw-breadcrumb-trail ?]
+  if show-paths = true [
+    foreach breadcrumb-trails [draw-breadcrumb-trail ?]
+  ]
+  if show-paths = true or show-crooked-paths = true [
+        bitmap:export bitmap:from-view "results-bitmap-paths.bmp"
+  ]
 
   setup-workers
 
@@ -137,13 +143,12 @@ to-report possible-path-list [little-dude theradius show-test-msgs]
   set heading currentheading
   report path-list
 end
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 214
-8
+10
 646
-461
+463
 -1
 -1
 2.0
@@ -294,7 +299,7 @@ max-turtles-per-square
 max-turtles-per-square
 1
 10
-10
+1
 1
 1
 dudes
@@ -354,36 +359,113 @@ Note:  This function is SLOW.  It looks for every place a building will fit, and
 0.0
 1
 
+SWITCH
+11
+302
+179
+335
+show-paths
+show-paths
+0
+1
+-1000
+
+SWITCH
+10
+335
+179
+368
+show-crooked-paths
+show-crooked-paths
+1
+1
+-1000
+
+BUTTON
+13
+57
+108
+90
+Fresh Workers
+fresh-workers
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+INPUTBOX
+688
+187
+752
+247
+scout-size
+4
+1
+0
+Number
+
+TEXTBOX
+765
+188
+1031
+252
+Fatter scouts make the breadcrumbs further out from the obsticles, and more room for traffic to flow along the crumbs.  But they get caught in narrow passages, and may have to take a very long route around.
+11
+0.0
+1
+
 @#$#@#$#@
 ## WHAT IS IT?
 
 Demonstration of traffic on a worksite, with obsticles that can cause energy loss, low speed, or chance of injury.
 
-## HOW IT WORKS
+## WORKER INJURIES
+The requirements for worker injuries has changed.
+1.  There was a chance of injury on every step in the danger zone.  More time in the danger zone increased the opportunity for injury.  However, the injuries were happening too fast.
+2.  There was a chance of injury on each trip through the danger zone.
+3.  The chance of injury is being applied to each worker (rather than steps or trips).  The catch is that we need spread out the injuries through the run, so additional tracking has to be made for who gets injured as well as when it will happen.  One solution is to generate set them up at creation time, so that 2% of them are marked for injury, and given a time when it will happen. This would be horrifying in the real world: "Joe, you will be getting hurt at 1:45 today, but please work hard all morning".  Perhaps we need a fortune teller booth?
 
+## BREADCRUMBS
+After several algorithms for worker movement, it was decided to lay out a set of breadcrumbs to follow, and still allow a small amount of variation around the trail for more "natural" movement.
 
+For each pair of buildings, there needs to be paths around the obsticles, and paths through the obsticles.  Six scouts are sent out for each path; three clockwise, three counterclockwise.  During the setup phase, you can observe scouts moving around the buildings.
 
-## HOW TO USE IT
+Each test path is optimized before it is checked for length.  The path is checked iteratively through all the points:  if pt1 has a clear sight to two steps ahead on the trail, the first step ahead is removed.  This repeats until pt1 cannot see pt3, and pt2 is necessary.  The the test begins again at pt2, to see how many more can be removed.  The result is a clean, direct trail, that doesn't wander into corners or take a drunken wobbling trail.
 
+Some scouts get lost and never find the destination.  But we are sending six, so the lost ones are skipped.  Prior to the breadcrumbs method, workers were getting lost.  We can lose a couple scouts, but workers really shouldn't face a wall and give up.
 
+#COLLISION BEHAVIOUR
+If a turtle cannot step ahead because of another dude, he tries to step to the right.
+If he cannot step to the right, he waits for a turn.
+In narrow passages, there isn't room to the right, and there are far too many workers trying to go through the passage.  They all step to the right, hit a wall, wait for the guy ahead to move, but there are a dozen guys ahead.  There is a slider for max turtles per square.  Setting it at 1 can only be done if you reduce the number of workers.
 
-## THINGS TO NOTICE
+## SINGLE WORKER PER BLOCK, GO RIGHT TO AVOID COLLISIONS
+This goal has been impossible due to the number of workers and the narrow passages.  Some measures taken to get closer:
+1.  Reduce the number of workers.  Having 200 or more in a task does not seem reasonable.  Some of these buildings are the size of my living room.  I can't put 200 people in my living room, much less have them doing physical work.  The turtles per patch must increase if the system is using large numbers of workers.
+2.  Widen the narrowest passage.  Scouts are drawing a center line for traffic.  The distance a scout travels from an obsticle is the narrowest lane of traffic.  Scouts are the same size everywhere, so the narrowest passage defines all of the traffic lanes everywhere.  Making it slightly larger gives us a fatter scout, and makes the center line further out from obsticles.
+3.  Keep to the right on the first leg of the journey.  Workers have been allowed to wander to get to the second breadcrumb of the trail.  The code was changed to force them to follow the trail all the way from the first breadcrumb at the building.
+4.  Workers step to the right when there is someone ahead of them.  This could be modified so that they step left when the person ahead is the same group going the same direction.  This avoids clumping around one stuck person, because they can't go more right.
+5.  Without adding the "go left around pals" rule, the limit to workers is about 40 per building.  After that, they get stuck in the narrows.
+6.  Adding in the "go left around pals" rule, the limit increases to about 55 per building.
 
+## BREAKING UP CLUMPS
+If one worker get stuck in narrow places, it turns into a buildup of workers.  Like they are all hanging out and chatting.
+1.  Identify that a worker is stuck as soon as possible, hopefully before more get stuck
+2.  Create behaviour for dispersing a group.
 
-## THINGS TO TRY
+## VISUALIZE BREADCRUMBS
+There are helper functions to let you see the breadcrumb trails and how the scouts create them.
+1.  A new switch to show breadcrumbs.  When breadcrumb trails are drawn they do not affect worker movement or patch colour.  A new file is generated also, to show the bitmap with trails.  Do not use this bitmap as input, because the trails in it will affect patch colour.
+2.  A new switch to show crooked paths.  This draws a line behind each scout as he wanders.  It soon gets messy, but it helps to visualize how the scout searches around.
+3.  Slow the speed down and zoom in on a patch where scouts seem busy.  This lets you see how they spin to look where to go, and choose a step.
 
-
-## EXTENDING THE MODEL
-It would be possible to create two "buildings" for workers who are out of energy, and workers who are injured.  Workers move to empty spots in these buildings, so that we can see the rate that they land there.
-
-## NETLOGO FEATURES
-
-Created algorithms for looking ahead for a possible path, and creeping around edges when the path isn't clear.
-
-## RELATED MODELS
-
-
-## CREDITS AND REFERENCES
+## OPTIMIZING BREADCRUMBS
+THe scout marks down every step he makes.  This includes hesitant zig-zag steps and following into blind corners.  Once a trail is found, we can simplify this trail with a small number of markers. We want a marker each place a path changes direction, but they are not needed in open stretches. For each set of three markers, the middle one is deleted if there is a clear line of sight between the first and third.  This is done iteratively until we have a set where each marker can only see one ahead.
 @#$#@#$#@
 default
 true

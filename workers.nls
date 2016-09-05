@@ -53,6 +53,8 @@ to setup-workers
   set I-grpbold  2   ;; true/false
   set I-grpcount 3
   set group-history []
+  
+
 
   foreach building-list [
     let buildnum  item I-ID ?
@@ -85,6 +87,12 @@ to setup-workers
     ]
   ]
 
+end
+
+to fresh-workers
+  ask workers [die]  ;; make sure there aren't leftovers.
+  reset-ticks
+  setup-workers
 end
 
 
@@ -344,9 +352,9 @@ to move-worker
          ;;set-direction little-dude
          follow-the-yellow-brick-road
 
-         let nextpatch [pcolor] of patch-ahead 1
+         let nextpcolor [pcolor] of patch-ahead 1
 
-         if not member? nextpatch  allowed-patches [
+         if not member? nextpcolor  allowed-patches [
            set hugging-edges-steps 10
          ]
 
@@ -385,13 +393,32 @@ to move-worker
 
 
          ;; check for someone on that patch, step to the right (unless we are already hugging an edge)
-         if (count (turtles-on (patch-ahead 1)) >= max-turtles-per-square
+         if (count (turtles-on (patch-ahead 1)) >= (max-turtles-per-square + 1)  ;; add one becasue the current worker sees himself, we are checking for other workers.
             and [building-number] of patch-ahead 1 = 0)
          [
-            set nextpatch [pcolor] of patch-right-and-ahead 90 1
-            ifelse ( member? nextpatch  allowed-patches and count (turtles-on (patch-right-and-ahead 90 1)) < max-turtles-per-square)
+           
+           ;; if the workers ahead are your buddies, go left, otherwise go right.  Left will help avoid clumping around a stuck guy.
+           let buddies false
+           let my-group-id (list searching? home-building destination-building)
+           ask turtles-on (patch-ahead 1) [
+             if searching? = (item 0 my-group-id)
+             and home-building = item 1 my-group-id
+             and destination-building = item 2 my-group-id
+             [
+               set buddies true;
+               ;; we don't care about avoidesr or mudders - both get us stuck
+             ]
+           ]
+           
+           let nextpatch patch-right-and-ahead 90 step-size
+           if buddies = true [ set nextpatch patch-left-and-ahead 90 step-size]
+             
+           set nextpcolor [pcolor] of nextpatch
+            ifelse ( member? nextpcolor  allowed-patches and count (turtles-on (nextpatch)) < max-turtles-per-square)
             [
-               move-to patch-right-and-ahead 90 step-size
+              
+              ;; TODO - check to see if the person ahead is the same group going the same direction.  Step left instead, because one stopped person can jam everyone that steps in behind.
+               move-to nextpatch
                set bump-count bump-count + 1
                ;;show "bump"
                set energy energy - effort

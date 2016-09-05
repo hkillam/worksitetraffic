@@ -1,63 +1,11 @@
 ;;
 ;; NAVIGATION
 ;;
-;; a collection of functions that determine how breadcrumbs 
-;; are made and how workers move along the breadcrumb trail.
+;; a collection of functions that determine how workers move along the breadcrumb trail.
 ;;
+;; (creation of breadcrumbs is being moved to code-scout.nls)  Shared functions stay in this file.
 ;;
 
-
-;;
-;; blaze-trail
-;;
-;; calls create-breadcrumbs 5 times, returns the shortest path
-;;
-to-report blaze-trail [src dst bold]
-    let besttrail (list 0 0 0 100000)
-    let newtrail (list 0 0 0 1000)
-    foreach [1 2 3] [
-       ;; right
-       set newtrail create-breadcrumbs src dst bold true 
-       if length newtrail > 6 and item 3 newtrail < item 3 besttrail 
-       [ set besttrail newtrail ]
-       ;; left
-       set newtrail create-breadcrumbs src dst bold false 
-       if length newtrail > 6 and item 3 newtrail < item 3 besttrail 
-       [ set besttrail newtrail ]
-    ]
-    report besttrail
-end
-
-;;
-;; create-breadcrumbs-from_buildinglist
-;;
-;; AFTER building list is built,
-;; AFTER buildings are all drawn,
-;; BEFORE workers are created
-;;
-to create-breadcrumbs-from_buildinglist
-  
-    foreach building-list [
-      let buildnum  item I-ID ?
-      let dest item I-Dest ?
-
-      ;; make sure there is a breadcrumb trail for every destination
-      foreach dest [
-        if not trail-exists buildnum ? true [
-            let newtrail blaze-trail buildnum ? true
-            if length newtrail > 6 [
-               set breadcrumb-trails lput newtrail breadcrumb-trails
-            ]
-        ]
-        if not trail-exists buildnum ? false [
-            let newtrail blaze-trail buildnum ? false
-            if length newtrail > 6 [
-              set breadcrumb-trails lput newtrail breadcrumb-trails
-            ]
-        ]
-      ]
-    ]  
-end
 
 ;;
 ;; trail-exists
@@ -74,154 +22,7 @@ to-report trail-exists [src dst bold]
   report false
 end
 
-;;
-;; create-breadcrumbs
-;;
-;; returns an arrary of [src dst bold length [x,y] [x,y] [x,y]...]
-;;
-to-report create-breadcrumbs [src dst bold righty?]
-  let breadcrumbs (list src dst bold 0)
-  let show-test-msgs false
-  let stop-spinning 800
-  
-  create-scout src dst bold righty?
-  
-  ask scouts
-  [
-    
-       ;; march until we find the building or we have gone in 1000 circles
-       while [[building-number] of patch-ahead 1 != dst and length breadcrumbs < stop-spinning] [
-         let lastheading heading
-         
-         ;; decide where to go, and get there
-         move-scout-one-step
-         
-         ;; add our current position to the list of breadcrumbs.  we can skip this if there was no change in direction
-        ;; if lastheading != heading [
-             set breadcrumbs add-breadcrumb breadcrumbs
-        ;; ]
 
-       ]
-       set breadcrumbs lput (list pxcor pycor) breadcrumbs  ;; add final point to the list
-       pen-up
-
-       ;; optimize the list (unless we hit 1000 points and gave up)
-       if length breadcrumbs < stop-spinning [
-         let index 4
-         while [index + 2 < length breadcrumbs] [
-           set breadcrumbs optimize-breadcrumbs breadcrumbs index  ;; start at 5th item, first four are not points
-           set index index + 1
-         ] 
-       ]
-       
-       if length breadcrumbs > 4 and length breadcrumbs < stop-spinning [
-         ;; measure the list
-         let pathlength measure-breadcrumb-trail breadcrumbs
-         set breadcrumbs replace-item 3 breadcrumbs pathlength
-       ]       
-       ;; done with this temp, kill him
-       die
-  ]  
-  
-  if length breadcrumbs > stop-spinning - 1 or length breadcrumbs < 6 [
-     ;; show "scout is lost, send someone else"
-     set breadcrumbs []
-  ]
-  
-  report breadcrumbs
-end   ;; create-breadcrumbs
-
-
-;;
-;; measure-breadcrumb-trail
-;;
-;; pass in a breadcrumb trail, return a total length
-;; used in turtle context
-;;
-to-report measure-breadcrumb-trail [trail]
-   let thelength 0
-   hatch 1 [
-
-      let pt1 item 4 trail
-      setxy  item 0 pt1 item 1 pt1
-      
-      foreach trail [
-        if is-list? ? [
-          set thelength thelength + distancexy item 0 ? item 1 ?
-          move-to patch item 0 ? item 1 ?
-        ]
-      ]
-      die;
-   ]
-   
-   report thelength
-end
-
-;;
-;; move-scout-one-step
-;;
-;; tell a scout to look around and decide where to move, and go there
-;; uses the range of possible paths and chooses the best, or it hugs an edge.
-;; 
-;;
-to move-scout-one-step
-  
-     ;; first check for a nice clear path with a buffer, then try a clear skinny path
-     let mypaths []
-     if hugging-edges-steps < 1 [
-       ;; get list of all possible paths
-       set  mypaths possible-path-list self 2 false
-       if length mypaths = 0 [ 
-         set mypaths possible-path-list self 0 false
-       ]  ;; if there aren't good paths with some buffer, try again with no buffer
-     ]
-     
-     ;; if we dont have a path, start hugging the edge
-     if length mypaths = 0 and hugging-edges-steps < 1
-     [ set hugging-edges-steps 9 ] 
-     
-     
-     ifelse hugging-edges-steps > 0[
-       ;; there are no paths, hug the edges, turn towards the next step
-       set hugging-edges-steps hugging-edges-steps - 1
-       let ret turn-along-edge  
-     ][
-       ;; choose the best path, and turn towards the next step
-       let myheading bestheading-path mypaths
-       set heading myheading
-     ]
-     
-     ;; double-check to see if it is a safe step, and move one.
-     let nextpatchcolor [pcolor] of patch-ahead 1
-     if ( member? nextpatchcolor  allowed-patches) 
-     [ forward 1 ]
-     
-     
-end
-
-;;
-;; optimize-breadcrumbs
-;;
-;; look at three points starting at index.  If there is a direct path 
-;; from the first to third, remove the second.  And repeat.
-;; returns the shortened breadcrumbs 
-to-report optimize-breadcrumbs [breadcrumbs index]
-  
-  if index + 2 < length breadcrumbs [
-    
-    let pt1 item index breadcrumbs
-    let pt2 item (index + 2) breadcrumbs
-    
-    if path-clear pt1 pt2 2 = true [
-      ;; remove the point that is not needed, recurse deeper in.
-      set breadcrumbs remove-item (index + 1) breadcrumbs
-      set breadcrumbs optimize-breadcrumbs breadcrumbs index
-    ]
-    
-  ]
-
-  report breadcrumbs
-end
 
 ;;
 ;; draw-breadcrumb-trail
@@ -339,17 +140,6 @@ to-report bestheading-path [mypaths]
    report myheading
 end
 
-;;
-;; add-breadcrumb
-;;
-;; adds the current location of the current worker to the end of the breadcrumbs array
-;; returns the breadcrumbs
-;;
-to-report add-breadcrumb [breadcrumbs]
-   set breadcrumbs lput (list pxcor pycor) breadcrumbs
-   report breadcrumbs
-end
-
 
 ;;
 ;; show-planned-path
@@ -378,13 +168,13 @@ end
 ;; where point is the position in the array of points
 ;;
 to-report select-breadcrumbs [src dest bold ]
-   let ndx 0
+   let trailid 0
   
    foreach breadcrumb-trails
    [ 
-      if src = item 0 ? and dest = item 1 ? and bold = item 2 ? [ report ( list ndx false 4) ]
-      if src = item 1 ? and dest = item 0 ? and bold = item 2 ? [ report ( list ndx true (length ? - 1)) ]
-      set ndx ndx + 1
+      if src = item 0 ? and dest = item 1 ? and bold = item 2 ? [ report ( list trailid false 4) ]
+      if src = item 1 ? and dest = item 0 ? and bold = item 2 ? [ report ( list trailid true (length ? - 1)) ]
+      set trailid trailid + 1
    ]
    report (list )
 end
@@ -405,10 +195,12 @@ to follow-the-yellow-brick-road
 
   ;; can we see the actual goal?
   if path-clear (list pxcor pycor) (list [pxcor] of goal [pycor] of goal) 0 = true
+  and (is-crossing-breadcrumbs? = false or breadcrumb-num = 0)
   [
     if debug-mode [
       show (word "it thinks the path is clear to the goal.  " item trail-id breadcrumb-trails )
     ]
+    set breadcrumb-num 0
     face-nowrap goal
     stop
   ]
@@ -450,6 +242,61 @@ end
 
 
 ;;  
+;; is-crossing-breadcrumbs?
+;; returns true/false
+;;
+;; Tells us if the worker is cutting a corner past a breadcrumb.  We want them to stay on their own side of the line.
+;;
+to-report is-crossing-breadcrumbs?
+  if breadcrumb-num < 4 [report false]  ;; no breadcrumbs for a direct line of sight.
+  let thiscrumb item breadcrumb-num  (item trail-id breadcrumb-trails)
+  let crossing false
+  
+  ;; get the next crumb in the trail
+  let next-crumb-num breadcrumb-num + 1
+  if breadcrumb-reverse = true [set next-crumb-num breadcrumb-num - 1]
+  let nextcrumb []
+  let patch2 goal
+  ifelse next-crumb-num < length item trail-id breadcrumb-trails and next-crumb-num > 3 [
+     set nextcrumb item next-crumb-num ( item trail-id breadcrumb-trails)
+     set patch2 patch item 0 nextcrumb item 1 nextcrumb
+     
+  ][
+     set patch2 goal  ;; at the end of the trail, compare the direction to the goal
+     ;;report false ;; at the end of the crumb trail, we can't cross it because it doesn't continue
+  ]
+  
+  let patch1 patch item 0 thiscrumb item 1 thiscrumb
+
+  hatch 1 [
+     ;; stay to the right of the breadcrumb trail - if the trail ahead curves to the left, stay on the trail and don't cut the corner
+     face-nowrap patch1
+     let current-heading heading
+     face-nowrap patch2
+     let next-heading heading
+     if next-heading  < current-heading
+     [
+        set crossing true
+    
+    ;; is it more than a step away?
+    if item 0 thiscrumb = pxcor and item 1 thiscrumb = pycor [
+;;    if item 0 thiscrumb - pxcor < -1 or item 0 thiscrumb - pxcor > 1 [
+;;      if item 1 thiscrumb - pycor < -1 or item 1 thiscrumb - pycor > 1 [
+         set crossing false
+
+         die
+      ]
+;;    ]
+;;  ]
+   ]   
+   
+  die
+  
+  ]
+      report crossing
+end
+
+;;  
 ;; next-crumb-in-sight?
 ;; returns true/false
 ;;
@@ -471,22 +318,7 @@ to-report next-crumb-in-sight?
   if not is-list?  nextcrumb or  length nextcrumb < 2 [ report false ]  ;; this is not a crumb, abort mission
   
   ;; stay to the right of the breadcrumb trail - if the trail ahead curves to the left, stay on the trail and don't cut the corner
-  face-nowrap patch item 0 thiscrumb  item 1 thiscrumb
-  let current-heading heading
-  face-nowrap patch item 0 nextcrumb  item 1 nextcrumb
-  let next-heading heading
-  ;;show (word "heading: " current-heading " turning to " next-heading)
-  if next-heading < current-heading
-  [
-    ;; is it more than a step away?
-    if item 0 thiscrumb = pxcor and item 1 thiscrumb = pycor [
-;;    if item 0 thiscrumb - pxcor < -1 or item 0 thiscrumb - pxcor > 1 [
-;;      if item 1 thiscrumb - pycor < -1 or item 1 thiscrumb - pycor > 1 [
-         report false
-      ]
-;;    ]
-;;  ]
-   ]
+  if is-crossing-breadcrumbs?  [report false]
 
   ;; see if we have a clear path
   if  is-list? nextcrumb and length nextcrumb > 1 
