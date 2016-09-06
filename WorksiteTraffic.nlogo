@@ -4,7 +4,7 @@ __includes ["worldview.nls" "building-code.nls" "navigation.nls" "workers.nls" "
 
 globals [
   mouse-was-down?
-  breadcrumb-trails
+
 ]
 
 

@@ -40,6 +40,7 @@ workers-own [
   jammed-count          ;; how often does this worker not move at all because of the crowd ahead
   time-in-obstacle      ;; how much time is spent wading in the mud
   steps-from-path       ;; how many times did this worker step aside for someone else, and to which side?  -1 left, 1 right
+  planned-injury        ;; If this is non-zero, the worker will be injured at this step.  This allows us to control the percentage injury by group instead of by trip or by step.
 ]
 
 
@@ -72,6 +73,14 @@ to setup-workers
         if (buildnum = 18) [ set color1 95 set color2 85 ]
         if (buildnum = 15) [ set color1 115 set color2 125  ]
         init-worker color1 color2 dest buildnum
+      ]
+      
+      ;; for workers going through the danger zone, xx% of them will be injured.  This is a change from calculating it per trip or per step.
+      let hazard-pay item I-Harm ?
+      ask workers with [home-building = buildnum and is-bold? = true and hazard-pay > 0] [
+        ;; injury rate is found in buildings.csv, and made into a global variable
+        let odds random 100
+        if odds < 2 [ set planned-injury random total-ticks]
       ]
       
       ;; create the list of group records
@@ -144,6 +153,8 @@ to write-worker-stats
      [ set filename (word filename "avoider.csv") ]
      csv:to-file filename myout
   ]
+  
+  show "Results have been saved to C:\\WorksiteTrafficResults\\results-group"
 end
 
 
@@ -201,6 +212,7 @@ to init-worker [  colorA colorB dest-buildings home-plate]
       set breadcrumb-num 0
       set-new-destination dest 1 0
       set steps-from-path 0
+      set planned-injury 0    ;; most people don't expect to be injured, but some will have a sword of Damacles over their heads.  They just don't know it  yet.
 end
 
 ;;
@@ -386,16 +398,24 @@ to move-worker
          ]
 
 
-         ;; roll the dice if we are in a danger zone
-         if chance-of-injury-percent > 0 and dice-tossed? = 0 [
-             if random 100 < chance-of-injury-percent
-             [ 
-                  set color black
-                  set injured? true
-                  set energy 0
-                  move-to patch 1 1
-              ]
-              set dice-tossed? 1
+         ;; roll the dice if we are in a danger zone  (old method - test for injury once per trip through the danger zone)
+         ;;if chance-of-injury-percent > 0 and dice-tossed? = 0 [
+         ;;    if random 100 < chance-of-injury-percent
+         ;;    [ 
+         ;;         set color black
+         ;;         set injured? true
+         ;;         set energy 0
+         ;;         move-to patch 1 1
+         ;;     ]
+         ;;     set dice-tossed? 1
+         ;;]
+         
+         if planned-injury > 0 and ticks = planned-injury [
+           ;;; bwahahahahah <evil laughter>  you did not know that your doom was set before you started.  And now you have reached the end of your time.
+           set injured? true
+           set color black
+           set energy 0
+           move-to patch 1 1
          ]
 
 
