@@ -342,7 +342,7 @@ end
 
 
 ;;
-;; check-goal
+;; move-worker
 ;;
 ;; worker procedure, single worker
 ;; spend time working, see if obsticle impacts the next step, bump into each other
@@ -353,6 +353,9 @@ to move-worker
     if color = black [
       stop;
     ]
+    
+    let debug false
+    if who = -1 [set debug true]
 
     ;; let the worker spend some time working int the dest building.
     if working-ticks > 0 [
@@ -366,8 +369,8 @@ to move-worker
      let chance-of-injury-percent 0
 
 
-    without-interruption
-     [
+  ;;  without-interruption [
+
 
          ;;set-direction little-dude
          follow-the-yellow-brick-road
@@ -420,6 +423,7 @@ to move-worker
 
 
 
+
          ;; check for someone on that patch, step to the right (unless we are already hugging an edge)
          if (count (turtles-on (patch-ahead 1)) >= (max-turtles-per-square + 1)  ;; add one becasue the current worker sees himself, we are checking for other workers.
             and [building-number] of patch-ahead 1 = 0)
@@ -434,25 +438,34 @@ to move-worker
              and destination-building = item 2 my-group-id
              [
                set buddies true;
+               if debug = true [show (word "blocked by buddies")]
              ]
            ]
            
            
            ;; check how far we have stepped from path and try to go back (if there is a trail)
-           let nextpatch patch-right-and-ahead 90 step-size
+           let nextpatch patch-right-and-ahead 90 1
            ifelse (steps-from-path < -1 or steps-from-path > 1) and breadcrumb-num >= I-firstpoint
            [
+                              if debug = true [show (word "turning back to patch.  steps away" steps-from-path)]
+
              ifelse steps-from-path > 0
-             [ set nextpatch patch-left-and-ahead 90 step-size
-               set steps-from-path steps-from-path - 1]
+             [ set nextpatch patch-left-and-ahead 90 1
+               set steps-from-path steps-from-path - 1
+]
              [ set steps-from-path steps-from-path + 1]
+                              if debug = true [show (word "just turned, and now we are...  steps away" steps-from-path)]
            ]
            [
              ;; if the workers ahead are your buddies, go left, otherwise go right.  Left will help avoid clumping around a stuck guy.
              ifelse buddies = true
-             [ set nextpatch patch-left-and-ahead 90 step-size
-               set steps-from-path steps-from-path - 1]
-             [ set steps-from-path steps-from-path + 1]
+             [ set nextpatch patch-left-and-ahead 90 1
+               set steps-from-path steps-from-path - 1
+               if debug = true [show (word "turning left around buddy")]
+               ]
+             [ set steps-from-path steps-from-path + 1
+               if debug = true [show (word "turning right around stranger")]
+               ]
            ]
            
             
@@ -461,6 +474,7 @@ to move-worker
               and ((count (turtles-on (nextpatch)) < max-turtles-per-square) or [building-number] of nextpatch = 0))
             [
               
+               if debug = true [show (word "seems to be an open step moving from  " patch-here" to " nextpatch) ]
               ;; TODO - check to see if the person ahead is the same group going the same direction.  Step left instead, because one stopped person can jam everyone that steps in behind.
                move-to nextpatch
                set bump-count bump-count + 1
@@ -468,7 +482,15 @@ to move-worker
                set energy energy - effort
                stop
             ][
+               ;; can't move forward.  haven't been able to move forward.  find any possible open patch adn move.
+               if debug = true [show (word "jammed")]
                set jammed-count jammed-count + 1
+               if jammed-count > 2 [
+                 let good-patches allowed-patches
+                 let some-rando one-of patches in-radius 1 with [member? pcolor good-patches and count turtles <= (max-turtles-per-square + 1)]
+                 if is-patch? some-rando 
+                 [move-to some-rando 
+                   set jammed-count 0]               ]
             ]
             stop
          ]
@@ -490,7 +512,7 @@ to move-worker
            move-to patch 1 1
          ]
 
-    ]
+;;    ]  ;; without-interruption
 end
 
 

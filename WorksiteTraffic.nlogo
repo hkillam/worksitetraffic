@@ -381,7 +381,7 @@ SWITCH
 368
 show-crooked-paths
 show-crooked-paths
-0
+1
 1
 -1000
 

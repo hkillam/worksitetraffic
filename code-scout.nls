@@ -12,7 +12,7 @@ globals [
   I-traildest    ;; 1 - destination building where the trail ends
   I-trailbold    ;; 2 - does the trail lead through mud/danger or around it?
   I-traillength  ;; 3 - total distance of this trail
-  I-firstpoint   ;; 4 - an array of x, y coordinates.  Remaining points are added after this one.
+  I-firstpoint   ;; 4 - the rest of the array is patches.
   
   breadcrumb-trails
   twistycrumbs
@@ -136,8 +136,7 @@ to-report create-breadcrumbs [src dst bold righty? trialnum]
   
   ask scouts
   [
-    
-   
+ 
        ;; march until we find the building or we have gone in 1000 circles
        while [[building-number] of patch-ahead 1 != dst and length breadcrumbs < stop-spinning] [
          let lastheading heading
@@ -149,7 +148,7 @@ to-report create-breadcrumbs [src dst bold righty? trialnum]
          set breadcrumbs add-breadcrumb breadcrumbs
 
        ]
-       set breadcrumbs lput (list pxcor pycor) breadcrumbs  ;; add final point to the list
+       set breadcrumbs lput patch-here breadcrumbs  ;; add final point to the list
        pen-up
 
        ;; optimize the list (unless we hit 1000 points and gave up)
@@ -235,11 +234,11 @@ to-report blaze-trail [src dst bold]
     foreach [1 2 3] [
        ;; right
        set newtrail create-breadcrumbs src dst bold true ?
-       if length newtrail > 6 and item 3 newtrail < item 3 besttrail 
+       if length newtrail > 6 and item I-traillength newtrail < item I-traillength besttrail 
        [ set besttrail newtrail ]
        ;; left
        set newtrail create-breadcrumbs src dst bold false ?
-       if length newtrail > 6 and item 3 newtrail < item 3 besttrail 
+       if length newtrail > 6 and item I-traillength newtrail < item I-traillength besttrail 
        [ set besttrail newtrail ]
     ]
     report besttrail
@@ -257,12 +256,12 @@ to-report measure-breadcrumb-trail [trail]
    hatch 1 [
 
       let pt1 item 4 trail
-      setxy  item 0 pt1 item 1 pt1
+      move-to  pt1
       
       foreach trail [
-        if is-list? ? [
-          set thelength thelength + distancexy item 0 ? item 1 ?
-          move-to patch item 0 ? item 1 ?
+        if is-patch? ? [
+          set thelength thelength + distance ?
+          move-to ?
         ]
       ]
       die;
@@ -279,7 +278,7 @@ end
 ;; returns the breadcrumbs
 ;;
 to-report add-breadcrumb [breadcrumbs]
-   set breadcrumbs lput (list pxcor pycor) breadcrumbs
+   set breadcrumbs lput patch-here breadcrumbs
    report breadcrumbs
 end
 ;;
@@ -289,7 +288,7 @@ end
 ;; from the first to third, remove the second.  And repeat.
 ;; returns the shortened breadcrumbs 
 to-report optimize-breadcrumbs [breadcrumbs index]
-  
+
   if index + 2 < length breadcrumbs [
     
     let pt1 item index breadcrumbs
@@ -302,6 +301,6 @@ to-report optimize-breadcrumbs [breadcrumbs index]
     ]
     
   ]
-
+  
   report breadcrumbs
 end

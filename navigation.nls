@@ -10,7 +10,7 @@
 ;;
 ;; trail-exists
 ;;
-;; do we have breadcrumbs for this trail?
+;; do we have breadcrumbs for this trail between two buildings?
 ;;
 to-report trail-exists [src dst bold]
   foreach breadcrumb-trails [
@@ -41,13 +41,13 @@ without-interruption [
     let pt1 item 4 path
     ask scouts [ 
       set color random (9) * 10 + 5
-      setxy  item 0 pt1 item 1 pt1
+      move-to pt1
       pen-down 
     ]
     
     foreach path [
-      if is-list? ? [
-        ask scouts [ move-to patch item 0 ? item 1 ?  ]
+      if is-patch? ? [
+        ask scouts [ move-to ?  ]
       ]
     ]
   ]
@@ -67,23 +67,24 @@ to-report path-clear [pt1 pt2 radius]
   let isclear true 
   let dude who
   let debug-mode false
+  
   if who = -1 [set debug-mode true]
   hatch 1 [ 
     if debug-mode = true [show (word "hatched a who " who )]
     ;; move our guy to the first breadcrumb, and look at the next
     if debug-mode = true [
       show (word pt1 pt2 )
-      setxy item 0 pt2 item 1 pt2 
+      move-to pt2 
 ;;      set size 0.1 
       set color red 
       ;;pen-down 
       show (word "src: " pt1 " dest: " pt2)
       show (word "allowed colors: " allowed-patches)
      ]  ;; show the line
-    setxy  item 0 pt1 item 1 pt1
+    move-to pt1
     if debug-mode = true [pen-up]
-    face-nowrap patch item 0 pt2 item 1 pt2
-    let dist distancexy  item 0 pt2 item 1 pt2
+    face-nowrap pt2
+    let dist distance  pt2
     if debug-mode = true [ show dist ]
     let step-counter 1                              ;; count steps along the path that is being examined
     
@@ -95,7 +96,7 @@ to-report path-clear [pt1 pt2 radius]
 ;;        show is-allowed-patch patch-ahead step-counter radius
         
       ]
-      if  patch-ahead step-counter = patch item 0 pt2 item 1 pt2 [ die report isclear]
+      if  patch-ahead step-counter = pt2 [ die report isclear]
       set step-counter step-counter + 1
       
       if ( is-allowed-patch patch-ahead step-counter radius = false) [
@@ -111,7 +112,7 @@ to-report path-clear [pt1 pt2 radius]
     if isclear = true and debug-mode = true [
       ;;pen-down
       set color blue
-      move-to patch item 0 pt2 item 1 pt2
+      move-to pt2
     ]
     
     die
@@ -198,14 +199,14 @@ to follow-the-yellow-brick-road
   if next-crumb-in-sight? = true [
       if debug = true [show (word "next crumb is visible.  ")]
       set crumb item breadcrumb-num  (item trail-id breadcrumb-trails)
-      face-nowrap patch item 0 crumb  item 1 crumb
+      face-nowrap crumb
       stop
   ]
   
   
   ;; can we see the actual goal?
   if debug = true [show is-crossing-breadcrumbs?]
-  if path-clear (list pxcor pycor) (list [pxcor] of goal [pycor] of goal) 0 = true
+  if path-clear patch-here goal 0 = true
   and (is-crossing-breadcrumbs? = false or breadcrumb-num = 0)
   [
     if debug = true and breadcrumb-num != 0 [show "the end is near"]
@@ -229,17 +230,20 @@ to follow-the-yellow-brick-road
 
  
   ;; continue to the current crumb
-  if path-clear (list pxcor pycor) (list item 0 crumb  item 1 crumb) 0
+  if path-clear patch-here crumb 0
   [
     if debug = true [show (word "looking at the crumb: " crumb)]
-    face-nowrap patch item 0 crumb  item 1 crumb
+    face-nowrap crumb
     stop
   ]
   
 ;;  show (word "lost in a snowstorm - can't see breadcrumbs " breadcrumb-num " of " item trail-id breadcrumb-trails )
-  ;; uhhhh...  face it anyway, i guess
-  if not is-list? crumb [show "this isn't even a crumb.  so crumby"]
-  face-nowrap patch item 0 crumb  item 1 crumb
+  ;; uhhhh...  seek open ground, i guess
+  let good-patches allowed-patches
+  let some-rando one-of patches in-radius 1 with [member? pcolor good-patches and count turtles <= (max-turtles-per-square + 1)]
+  if is-patch? some-rando [set crumb some-rando]
+ 
+  face-nowrap crumb
 end
 
 
@@ -265,7 +269,7 @@ to-report is-crossing-breadcrumbs?
   let patch2 goal
   ifelse next-crumb-num < length item trail-id breadcrumb-trails and next-crumb-num > 3 [
      set nextcrumb item next-crumb-num ( item trail-id breadcrumb-trails)
-     set patch2 patch item 0 nextcrumb item 1 nextcrumb
+     set patch2 nextcrumb
      
   ][
      if debug = true [show "checking end goal"]
@@ -275,7 +279,7 @@ to-report is-crossing-breadcrumbs?
   
   if debug = true [ show (word "patch2 new dest: " patch2 " next crumb id " next-crumb-num) ]
   
-  let patch1 patch item 0 thiscrumb item 1 thiscrumb
+  let patch1 thiscrumb
 
   hatch 1 [
      ;; stay to the right of the breadcrumb trail - if the trail ahead curves to the left, stay on the trail and don't cut the corner
@@ -290,16 +294,12 @@ to-report is-crossing-breadcrumbs?
         set crossing true
         if debug = true [ show (word "crossing") ]
     
-    ;; is it more than a step away?
-    if item 0 thiscrumb = pxcor and item 1 thiscrumb = pycor [
-;;    if item 0 thiscrumb - pxcor < -1 or item 0 thiscrumb - pxcor > 1 [
-;;      if item 1 thiscrumb - pycor < -1 or item 1 thiscrumb - pycor > 1 [
-         set crossing false
-         if debug = true [ show (word "sitting on " patch-here " target is " thiscrumb)  ]
-         die
+        ;;  if item 0 thiscrumb = pxcor and item 1 thiscrumb = pycor [  ;; when we had arrays of coords instead of simply using patches
+        if  distance  thiscrumb < 2 [
+           set crossing false
+           if debug = true [ show (word "sitting on " patch-here " target is " thiscrumb)  ]
+           die
       ]
-;;    ]
-;;  ]
    ]   
    
   die
@@ -329,15 +329,15 @@ to-report next-crumb-in-sight?
      set nextcrumb item next-crumb-num ( item trail-id breadcrumb-trails)
   ]
 
-  if not is-list?  nextcrumb or  length nextcrumb < 2 [ report false ]  ;; this is not a crumb, abort mission
+  if not is-patch?  nextcrumb [ report false ]  ;; this is not a crumb, abort mission
   
   ;; stay to the right of the breadcrumb trail - if the trail ahead curves to the left, stay on the trail and don't cut the corner
   if is-crossing-breadcrumbs?  [report false]
 
   ;; see if we have a clear path
-  if  is-list? nextcrumb and length nextcrumb > 1 
+  if  is-patch? nextcrumb
   [
-    if path-clear (list pxcor pycor) (list item 0 nextcrumb  item 1 nextcrumb) 0 and is-crossing-breadcrumbs? = false
+    if path-clear patch-here nextcrumb 0 and is-crossing-breadcrumbs? = false
     [
       set breadcrumb-num next-crumb-num
       report true
