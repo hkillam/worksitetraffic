@@ -26,9 +26,13 @@ to setup ; linked with setup button on interface
   ;; note that these trails are invisible to the workers, and do not affect worker movement.
   if show-paths = true [
     foreach breadcrumb-trails [draw-breadcrumb-trail ?]
-  ]
-  if show-paths = true or show-crooked-paths = true [
         bitmap:export bitmap:from-view "results-bitmap-paths.bmp"
+  ]
+
+
+  if show-crooked-paths = true [
+    foreach twistycrumbs [draw-breadcrumb-trail ?]
+        bitmap:export bitmap:from-view "results-bitmap-twistypaths.bmp"
   ]
 
   setup-workers
@@ -377,7 +381,7 @@ SWITCH
 368
 show-crooked-paths
 show-crooked-paths
-1
+0
 1
 -1000
 
@@ -452,6 +456,7 @@ This goal has been impossible due to the number of workers and the narrow passag
 4.  Workers step to the right when there is someone ahead of them.  This could be modified so that they step left when the person ahead is the same group going the same direction.  This avoids clumping around one stuck person, because they can't go more right.
 5.  Without adding the "go left around pals" rule, the limit to workers is about 40 per building.  After that, they get stuck in the narrows.
 6.  Adding in the "go left around pals" rule, the limit increases to about 55 per building.
+7.  If workers step aside too often, they end up losing sight of their goal.  Track how often they step aside and make back to the trail their first priority (before left for pals or right for others)  The worker limit is much higher, except for the guys who have no trail (direct line of sight to the building).   They make nice orderly rows and wait for someone else to move.
 
 ## BREAKING UP CLUMPS
 If one worker get stuck in narrow places, it turns into a buildup of workers.  Like they are all hanging out and chatting.
