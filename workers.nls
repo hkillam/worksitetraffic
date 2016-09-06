@@ -39,6 +39,7 @@ workers-own [
   bump-count            ;; how often does this worker step aside because of the crowd ahead
   jammed-count          ;; how often does this worker not move at all because of the crowd ahead
   time-in-obstacle      ;; how much time is spent wading in the mud
+  steps-from-path       ;; how many times did this worker step aside for someone else, and to which side?  -1 left, 1 right
 ]
 
 
@@ -197,7 +198,9 @@ to init-worker [  colorA colorB dest-buildings home-plate]
       ]
 
       set no-energy-tick 0
+      set breadcrumb-num 0
       set-new-destination dest 1 0
+      set steps-from-path 0
 end
 
 ;;
@@ -253,14 +256,19 @@ to set-new-destination [new-dest new-searching add-trip ]
       set trips-completed trips-completed + add-trip
       set dice-tossed? 0
       set hugging-edges-steps 0
+      set steps-from-path 0
 
       ;; tell turtle which direction it will need to turn to go away from the center
+      ;; this is leftover from code where the turtles each found their own way, and would tell them which way to look for a path.
       let centerheading towardsxy 105 105
       ifelse (subtract-headings centerheading heading > 0) [
         set go-right? false
       ] [
         set go-right? true
       ]
+      
+      ;; change shade of worker
+      ifelse new-dest = home-building [set color color + 1][set color color - 1]
       
       ;; choose a trail of breadcrumbs
       let src home-building
@@ -397,7 +405,7 @@ to move-worker
             and [building-number] of patch-ahead 1 = 0)
          [
            
-           ;; if the workers ahead are your buddies, go left, otherwise go right.  Left will help avoid clumping around a stuck guy.
+           ;; see if this guy is a buddy going the same direction as you
            let buddies false
            let my-group-id (list searching? home-building destination-building)
            ask turtles-on (patch-ahead 1) [
@@ -406,15 +414,31 @@ to move-worker
              and destination-building = item 2 my-group-id
              [
                set buddies true;
-               ;; we don't care about avoidesr or mudders - both get us stuck
              ]
            ]
            
+           
+           ;; check how far we have stepped from path and try to go back (if there is a trail)
            let nextpatch patch-right-and-ahead 90 step-size
-           if buddies = true [ set nextpatch patch-left-and-ahead 90 step-size]
-             
+           ifelse (steps-from-path < -1 or steps-from-path > 1) and breadcrumb-num >= I-firstpoint
+           [
+             ifelse steps-from-path > 0
+             [ set nextpatch patch-left-and-ahead 90 step-size
+               set steps-from-path steps-from-path - 1]
+             [ set steps-from-path steps-from-path + 1]
+           ]
+           [
+             ;; if the workers ahead are your buddies, go left, otherwise go right.  Left will help avoid clumping around a stuck guy.
+             ifelse buddies = true
+             [ set nextpatch patch-left-and-ahead 90 step-size
+               set steps-from-path steps-from-path - 1]
+             [ set steps-from-path steps-from-path + 1]
+           ]
+           
+            
            set nextpcolor [pcolor] of nextpatch
-            ifelse ( member? nextpcolor  allowed-patches and count (turtles-on (nextpatch)) < max-turtles-per-square)
+            ifelse ( member? nextpcolor  allowed-patches 
+              and ((count (turtles-on (nextpatch)) < max-turtles-per-square) or [building-number] of nextpatch = 0))
             [
               
               ;; TODO - check to see if the person ahead is the same group going the same direction.  Step left instead, because one stopped person can jam everyone that steps in behind.

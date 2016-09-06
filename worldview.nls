@@ -202,7 +202,7 @@ to setup-patches [mapfile colorfile]
 
     ;; find all the colours that are not one of our scheme, and adjust them to fit.
     if (not member? pcolor mapcolors) [
-      if (pcolor > 0 and pcolor <= 4) [ set pcolor clr-void ]
+      if (pcolor <= 4) [ set pcolor clr-void ]
       if (pcolor >= 5 and pcolor <= 9) [ set pcolor clr-path ]
       if (pcolor = 13 ) [set pcolor clr-fixed-facility2]
       if (pcolor >= 17 and pcolor <= 19 ) [ set pcolor clr-path ]
@@ -218,9 +218,10 @@ to setup-patches [mapfile colorfile]
       if (pcolor >= 80 and pcolor <= 83 ) [ set pcolor clr-void ]
       if (pcolor >= 90 and pcolor <= 93 ) [ set pcolor clr-void ]
       if (pcolor >= 100 and pcolor <= 105 ) [ set pcolor clr-void ]
+      if (pcolor = 105)  [ set pcolor clr-fixed-facility2 ]
       if (pcolor >= 106 and pcolor <= 109 ) [ set pcolor clr-path ]
       if (pcolor >= 110 and pcolor <= 115 ) [ set pcolor clr-void ]
-      if (pcolor >= 120 and pcolor <= 123 ) [ set pcolor blue ]
+      if (pcolor >= 120 and pcolor <= 123 ) [ set pcolor clr-fixed-facility]
       if (pcolor >= 124 and pcolor <= 128 ) [ set pcolor clr-fixed-facility2 ]
       if (pcolor = 129 ) [ set pcolor clr-path ]
       if (pcolor >= 130 and pcolor <= 134) [ set pcolor clr-fixed-facility2 ]
@@ -230,7 +231,7 @@ to setup-patches [mapfile colorfile]
       ]
     ]
   ]
-;;   show (word "Unrecognized colors in bitmap: " extracolors )
+   ;;show (word "Unrecognized colors in bitmap: " extracolors )
 
 end
 

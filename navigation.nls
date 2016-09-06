@@ -187,16 +187,28 @@ end
 ;;
 to follow-the-yellow-brick-road
   let debug-mode false
-  if who = -1 [set debug-mode true]
+  let debug false
   
   ;; are we still playing?
   if color = black [ stop ]
 
-
+  let crumb item breadcrumb-num  (item trail-id breadcrumb-trails)
+  
+  ;; can we see the  crumb ahead?  (do not skip crumbs - check this before the goal)  (function also updates the current crumb-id)
+  if next-crumb-in-sight? = true [
+      if debug = true [show (word "next crumb is visible.  ")]
+      set crumb item breadcrumb-num  (item trail-id breadcrumb-trails)
+      face-nowrap patch item 0 crumb  item 1 crumb
+      stop
+  ]
+  
+  
   ;; can we see the actual goal?
+  if debug = true [show is-crossing-breadcrumbs?]
   if path-clear (list pxcor pycor) (list [pxcor] of goal [pycor] of goal) 0 = true
   and (is-crossing-breadcrumbs? = false or breadcrumb-num = 0)
   [
+    if debug = true and breadcrumb-num != 0 [show "the end is near"]
     if debug-mode [
       show (word "it thinks the path is clear to the goal.  " item trail-id breadcrumb-trails )
     ]
@@ -215,21 +227,11 @@ to follow-the-yellow-brick-road
   
 ;;  show (word "on patch " pxcor ", " pycor " using crumb " breadcrumb-num)
 
-  ;; grab the crumb we are looking for
-  let crumb item breadcrumb-num  (item trail-id breadcrumb-trails)
-  
-  ;; can we see the  crumb ahead?
-  if next-crumb-in-sight? = true [
-      set crumb item breadcrumb-num  (item trail-id breadcrumb-trails)
-      face-nowrap patch item 0 crumb  item 1 crumb
-      stop
-  ]
-  
+ 
   ;; continue to the current crumb
-  set crumb item breadcrumb-num  (item trail-id breadcrumb-trails)
-;;  show (word "current crumb is: " crumb )
   if path-clear (list pxcor pycor) (list item 0 crumb  item 1 crumb) 0
   [
+    if debug = true [show (word "looking at the crumb: " crumb)]
     face-nowrap patch item 0 crumb  item 1 crumb
     stop
   ]
@@ -251,6 +253,10 @@ to-report is-crossing-breadcrumbs?
   if breadcrumb-num < 4 [report false]  ;; no breadcrumbs for a direct line of sight.
   let thiscrumb item breadcrumb-num  (item trail-id breadcrumb-trails)
   let crossing false
+  let debug false
+
+  if debug = true [ show item trail-id breadcrumb-trails ]
+  if debug = true [ show thiscrumb ]
   
   ;; get the next crumb in the trail
   let next-crumb-num breadcrumb-num + 1
@@ -262,9 +268,12 @@ to-report is-crossing-breadcrumbs?
      set patch2 patch item 0 nextcrumb item 1 nextcrumb
      
   ][
+     if debug = true [show "checking end goal"]
      set patch2 goal  ;; at the end of the trail, compare the direction to the goal
      ;;report false ;; at the end of the crumb trail, we can't cross it because it doesn't continue
   ]
+  
+  if debug = true [ show (word "patch2 new dest: " patch2 " next crumb id " next-crumb-num) ]
   
   let patch1 patch item 0 thiscrumb item 1 thiscrumb
 
@@ -272,18 +281,21 @@ to-report is-crossing-breadcrumbs?
      ;; stay to the right of the breadcrumb trail - if the trail ahead curves to the left, stay on the trail and don't cut the corner
      face-nowrap patch1
      let current-heading heading
+     if debug = true [ show (word "my heading: " current-heading) ]
      face-nowrap patch2
      let next-heading heading
-     if next-heading  < current-heading
+     if debug = true [ show (word "next heading: " next-heading) ]
+     if next-heading  < current-heading or (next-heading > 270 and current-heading < 90)
      [
         set crossing true
+        if debug = true [ show (word "crossing") ]
     
     ;; is it more than a step away?
     if item 0 thiscrumb = pxcor and item 1 thiscrumb = pycor [
 ;;    if item 0 thiscrumb - pxcor < -1 or item 0 thiscrumb - pxcor > 1 [
 ;;      if item 1 thiscrumb - pycor < -1 or item 1 thiscrumb - pycor > 1 [
          set crossing false
-
+         if debug = true [ show (word "sitting on " patch-here " target is " thiscrumb)  ]
          die
       ]
 ;;    ]
@@ -293,6 +305,7 @@ to-report is-crossing-breadcrumbs?
   die
   
   ]
+  if debug = true [ show (word "crossing set to " crossing) ]
       report crossing
 end
 
@@ -304,6 +317,7 @@ end
 ;;  NOTE:  this function will update the breadcrumb-num for the worker if the next crum is in sight
 ;;
 to-report next-crumb-in-sight? 
+  if breadcrumb-num = 0 [report false]
   
   let thiscrumb item breadcrumb-num  (item trail-id breadcrumb-trails)
   
@@ -323,7 +337,7 @@ to-report next-crumb-in-sight?
   ;; see if we have a clear path
   if  is-list? nextcrumb and length nextcrumb > 1 
   [
-    if path-clear (list pxcor pycor) (list item 0 nextcrumb  item 1 nextcrumb) 0
+    if path-clear (list pxcor pycor) (list item 0 nextcrumb  item 1 nextcrumb) 0 and is-crossing-breadcrumbs? = false
     [
       set breadcrumb-num next-crumb-num
       report true

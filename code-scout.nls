@@ -13,6 +13,8 @@ globals [
   I-trailbold    ;; 2 - does the trail lead through mud/danger or around it?
   I-traillength  ;; 3 - total distance of this trail
   I-firstpoint   ;; 4 - an array of x, y coordinates.  Remaining points are added after this one.
+  
+  twistycrumbs
 ]
 
 scouts-own [
@@ -38,6 +40,8 @@ to setup-scouts
   set I-trailbold    2  ;; 2 - does the trail lead through mud/danger or around it?
   set I-traillength  3  ;; 3 - total distance of this trail
   set I-firstpoint   4  ;; 4 - an array of x, y coordinates.  Remaining points are added after this one.
+  
+  set twistycrumbs (list )
 end  
 
 
@@ -122,7 +126,7 @@ end
 ;;
 ;; returns an arrary of [src dst bold length [x,y] [x,y] [x,y]...]
 ;;
-to-report create-breadcrumbs [src dst bold righty?]
+to-report create-breadcrumbs [src dst bold righty? trialnum]
   let breadcrumbs (list src dst bold 0)
   let show-test-msgs false
   let stop-spinning 800
@@ -132,10 +136,7 @@ to-report create-breadcrumbs [src dst bold righty?]
   ask scouts
   [
     
-       if show-crooked-paths = true [
-           pen-down
-       ]
-    
+   
        ;; march until we find the building or we have gone in 1000 circles
        while [[building-number] of patch-ahead 1 != dst and length breadcrumbs < stop-spinning] [
          let lastheading heading
@@ -152,6 +153,7 @@ to-report create-breadcrumbs [src dst bold righty?]
 
        ;; optimize the list (unless we hit 1000 points and gave up)
        if length breadcrumbs < stop-spinning [
+         if trialnum = 1 [set twistycrumbs lput breadcrumbs twistycrumbs]
          let index 4
          while [index + 2 < length breadcrumbs] [
            set breadcrumbs optimize-breadcrumbs breadcrumbs index  ;; start at 5th item, first four are not points
@@ -231,11 +233,11 @@ to-report blaze-trail [src dst bold]
     let newtrail (list 0 0 0 1000)
     foreach [1 2 3] [
        ;; right
-       set newtrail create-breadcrumbs src dst bold true 
+       set newtrail create-breadcrumbs src dst bold true ?
        if length newtrail > 6 and item 3 newtrail < item 3 besttrail 
        [ set besttrail newtrail ]
        ;; left
-       set newtrail create-breadcrumbs src dst bold false 
+       set newtrail create-breadcrumbs src dst bold false ?
        if length newtrail > 6 and item 3 newtrail < item 3 besttrail 
        [ set besttrail newtrail ]
     ]
