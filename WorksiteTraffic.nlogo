@@ -38,12 +38,6 @@ to setup ; linked with setup button on interface
 
   setup-workers
   reset-ticks
-movie-start "out.mov"
-movie-grab-view ;; show the initial state
-repeat 2000
-[ go
-  movie-grab-view ]
-movie-close
 end
 
 

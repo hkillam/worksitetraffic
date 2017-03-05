@@ -34,3 +34,5 @@ results-bitmap.bmp
 csv/csv.jar
 csv/commons-csv-1.0.jar
 bitmap/bitmap.jar
+out.nonstreamable.mov
+out.mov
