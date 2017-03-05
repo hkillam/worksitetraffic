@@ -1,5 +1,5 @@
 extensions [csv  bitmap]
-__includes ["worldview.nls" "building-code.nls" "navigation.nls" "workers.nls" "code-scout.nls"]
+__includes ["worldview.nls" "building-code.nls" "navigation.nls" "workers.nls" "code-scout.nls" "code-api.nls"]
 
 
 globals [
@@ -9,6 +9,7 @@ globals [
 
 
 to setup ; linked with setup button on interface
+  reset-ticks
   clear-all
   set mouse-was-down? false
   setup-building-index-values
@@ -36,8 +37,13 @@ to setup ; linked with setup button on interface
   ]
 
   setup-workers
-
   reset-ticks
+movie-start "out.mov"
+movie-grab-view ;; show the initial state
+repeat 2000
+[ go
+  movie-grab-view ]
+movie-close
 end
 
 
@@ -55,8 +61,10 @@ to go  ;; forever button
 
   tick
 
+
   if ticks > total-ticks
   [ write-results
+    show "run has completed"
     stop
   ]
 
@@ -370,7 +378,7 @@ SWITCH
 335
 show-paths
 show-paths
-0
+1
 1
 -1000
 

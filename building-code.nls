@@ -108,8 +108,12 @@ to-report group-stats [building-num dest]
     if count nappers > 0 [set napper-times mean  [no-energy-tick] of nappers]
     
     let num-injured count workers with [injured? = true and building-num = home-building  and destination-building = dest]
+    
+    let total-trips sum [trips-completed]  of  workers with [home-building = building-num and destination-building = dest]
+    let total-bold-trips sum [trips-completed]  of  workers with [is-bold? = true and home-building = building-num and destination-building = dest]
+    let total-avoider-trips sum [trips-completed]  of  workers with [is-bold? = false and home-building = building-num and destination-building = dest]
 
-    report (list building-num dest avoiders bold avoiders-trips bold-trips avoiders-triptime bold-triptime napper-times num-injured)
+    report (list building-num dest avoiders bold avoiders-trips bold-trips avoiders-triptime bold-triptime napper-times num-injured total-trips total-bold-trips total-avoider-trips)
 end
 
 ;;
@@ -120,6 +124,7 @@ end
 to write-building-stats 
   ;; building stats
   ;; facility  name  x  y  width  height  num workers  dest  slow in mud  tired in mud  risk danger  min time working  max time working
+
 
   let myheaders ["facility" "name" "x" "y" "width" "height" "num workers" "dest" "slow in mud" "tired in mud" "risk danger" "min time working" "max time working"]
   let myout (list myheaders)
@@ -132,8 +137,9 @@ to write-building-stats
       let bwid max [pxcor] of patches with [building-number = buildnum] - bx1
       let blen max [pycor] of patches with [building-number = buildnum] - by1
       let dest item 0 item I-Dest ?
-      if length item I-Dest ? > 1 [ set dest (word item 0 item I-Dest ? "," item 1 item I-Dest ?) ]  ;; note - only allows two, need more complex processing for more.
-      set myout lput (list buildnum item I-Name ? bx1 by1 bwid blen item I-NumWorkers ? dest item I-MudSlows ? item I-MudTires ? item I-Harm ? item I-MinWork ? item I-MaxWork ?) myout
+      if length item I-Dest ? > 1 [ set dest (word "\"" item 0 item I-Dest ? "," item 1 item I-Dest ? "\"") ]  ;; note - only allows two, need more complex processing for more.
+      let buildname (word "\"" item I-Name ?  "\"" )
+      set myout lput (list buildnum buildname bx1 by1 bwid blen item I-NumWorkers ? dest item I-MudSlows ? item I-MudTires ? item I-Harm ? item I-MinWork ? item I-MaxWork ?) myout
     ]
   ]
   csv:to-file "C:\\WorksiteTrafficResults\\results-buildings.csv" myout

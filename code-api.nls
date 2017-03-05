@@ -1,0 +1,45 @@
+;;
+;; code-API.nls
+;;
+;; THis application can run within another Java application, secifically TrafficController.
+;;  
+;; Certain functions are needed by the external app that are not specifically needed internally.  
+;; This includes reporting on building positions, setup without creating workers or breadcrumbs.  
+;;
+;;
+
+
+;; 
+;;  setup-world-only
+;;  Loads the patches and colour charts.  Used to create a test world to see if possible building locations are acceptable.
+;;
+to setup-world-only 
+  setup-colours
+  setup-patches "WorkplaceTraffic.bmp" "colours.csv"
+end
+
+
+to sketch-building [building-num x1 y1 x2 y2]
+  without-interruption
+  [
+    
+   let background [] 
+   ask patches with [pxcor >= x1 and pxcor <= x2 and  pycor >= y1 and pycor <= y2]
+   [
+     set pcolor  clr-moveable-facility
+     set building-number  building-num
+     set building-width x2 - x1
+     set building-height y2 - y1
+   ]
+ 
+   ask patches with [pxcor = x1 + 5 and pycor = y1 + 5]
+   [
+     set plabel-color black
+     set plabel building-num
+   ]
+  ]
+end
+
+to-report main-building 
+    report patches with [pcolor = clr-fixed-facility]
+end

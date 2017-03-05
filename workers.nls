@@ -113,6 +113,12 @@ end
 ;;
 to record-group-stats
   let new-history []
+
+  if group-history = 0 [
+    show "No grouip history available"
+    stop
+    ]
+  
   foreach group-history
   [
     let thegroup workers with [is-bold? = item I-grpbold ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ? ]
@@ -137,6 +143,10 @@ to write-worker-stats
   let myheaders ["ticks" "total trips" "average trips" "retired" "injured"]
   
 
+  if group-history = 0 [
+    show "No grouip history available"
+    stop
+    ]
 
   foreach group-history
   [
@@ -165,7 +175,7 @@ end
 ;;
 to write-worker-summaries
   ;; building stats
-  let myheaders ["source building" "dest building" "number of avoiders" "number of bold workers" "average trips for avoiders" "average trips for bold" "average time per trip avoiders" "average time per trip bold" "average ticks mudders get tired" "num injured workers"]
+  let myheaders ["source building" "dest building" "number of avoiders" "number of bold workers" "average trips for avoiders" "average trips for bold" "average time per trip avoiders" "average time per trip bold" "average ticks mudders get tired" "num injured workers" "total trips for group" "total bold trips"  "total avoider trips" ]
   let myout (list myheaders)
 
   foreach building-list [

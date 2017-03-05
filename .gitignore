@@ -31,3 +31,6 @@ WorkplaceTraffic - Copy.bmp
 results-bitmap-paths.bmp
 results-bitmap-twistypaths.bmp
 results-bitmap.bmp
+csv/csv.jar
+csv/commons-csv-1.0.jar
+bitmap/bitmap.jar
