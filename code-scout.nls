@@ -14,7 +14,7 @@ globals [
   I-traillength  ;; 3 - total distance of this trail
   I-firstpoint   ;; 4 - the rest of the array is patches.
   
-  breadcrumb-trails
+  ;;breadcrumb-trails
   twistycrumbs
 ]
 

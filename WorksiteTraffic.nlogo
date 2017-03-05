@@ -1,15 +1,15 @@
 extensions [csv  bitmap]
-__includes ["worldview.nls" "building-code.nls" "navigation.nls" "workers.nls" "code-scout.nls" "code-api.nls"]
+__includes ["worldview.nls" "building-code.nls" "navigation.nls" "workers.nls" "code-scout.nls"]
 
 
 globals [
   mouse-was-down?
-
+  breadcrumb-trails
 ]
 
 
 to setup ; linked with setup button on interface
-  reset-ticks
+  reset-timer
   clear-all
   set mouse-was-down? false
   setup-building-index-values
@@ -37,7 +37,10 @@ to setup ; linked with setup button on interface
   ]
 
   setup-workers
+
   reset-ticks
+  show timer
+
 end
 
 
@@ -46,23 +49,41 @@ end
 
 to go  ;; forever button
 
-  ask workers
+    reset-timer
+
+    ask workers
   [
      check-goal         ;; when we reach our goal, set a new goal
      move-worker
   ]
-  record-group-stats
+
+  if ticks = total-ticks [ask workers [die]  ;; make sure there aren't leftovers.
+  setup-workers]
+
+   record-group-stats
 
   tick
 
 
-  if ticks > total-ticks
+
+  if ticks > (r * total-ticks)
   [ write-results
-    show "run has completed"
+    show timer
     stop
   ]
 
 end
+
+
+;to setup
+;reset-timer
+;timer
+;end
+;
+;to go
+;show timer
+;end
+
 
 to write-results
   write-worker-stats
@@ -372,7 +393,7 @@ SWITCH
 335
 show-paths
 show-paths
-1
+0
 1
 -1000
 
@@ -410,7 +431,7 @@ INPUTBOX
 752
 247
 scout-size
-4
+5
 1
 0
 Number
@@ -424,6 +445,61 @@ Fatter scouts make the breadcrumbs further out from the obsticles, and more room
 11
 0.0
 1
+
+INPUTBOX
+689
+255
+740
+316
+m
+1
+1
+0
+Number
+
+INPUTBOX
+690
+325
+741
+386
+s
+0.5
+1
+0
+Number
+
+INPUTBOX
+692
+395
+743
+456
+r
+1
+1
+0
+Number
+
+INPUTBOX
+777
+275
+828
+336
+mm
+200
+1
+0
+Number
+
+INPUTBOX
+779
+345
+830
+406
+mst
+100
+1
+0
+Number
 
 @#$#@#$#@
 ## WHAT IS IT?

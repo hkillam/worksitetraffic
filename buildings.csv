@@ -1,4 +1,4 @@
 facility,name,x,y,width,height,num workers,dest,slow in mud,tired in mud,risk danger,min time working,max time working,,notes
-14,"long term laydown",103,32,25,20,375,1,1,1,0,0,0,,
-18,"rebar yard",123,96,20,20,150,14,0,1,0,0,0,,
-15,"scaffold storage",149,92,14,12,280,"14,18",0,1,1,0,0,,
+2,long term laydown,101,63,15,10,10,4,1,0,0,150,200,,375
+3,rebar yard,158,99,10,20,10,2,0,1,0,50,100,,150
+4,scaffold storage,35,135,14,20,10,1,1,0,0,50,100,,280
