@@ -9,6 +9,7 @@ breed [ workers ]
 
 globals [
   group-history   ;; an array for each group:  source, dest, bold, num-in-group, list of trip counts at each tick
+  group-summaries  ;; an array for each repetition of the trial
   
   ;; indexes in the group-history array
   I-grpsrc
@@ -41,6 +42,7 @@ workers-own [
   time-in-obstacle      ;; how much time is spent wading in the mud
   steps-from-path       ;; how many times did this worker step aside for someone else, and to which side?  -1 left, 1 right
   planned-injury        ;; If this is non-zero, the worker will be injured at this step.  This allows us to control the percentage injury by group instead of by trip or by step.
+  time-worked           ;; amount of time this worker spent working.
 ]
 
 
@@ -55,6 +57,7 @@ to setup-workers
   set I-grpbold  2   ;; true/false
   set I-grpcount 3
   set group-history []
+  set group-summaries []   ;; group history for every repetition.
   
 
 
@@ -115,7 +118,7 @@ to record-group-stats
   let new-history []
 
   if group-history = 0 [
-    show "No grouip history available"
+    show "No group history available"
     stop
     ]
   
@@ -124,14 +127,21 @@ to record-group-stats
     let thegroup workers with [is-bold? = item I-grpbold ? and home-building = item I-grpsrc ? and destination-building = item I-grpdst ? ]
     if count thegroup > 0 [
        let sum-trips  sum [trips-completed] of  thegroup
+       let total-work  sum [time-worked] of  thegroup
+       ;;show total-work
        let avg-trips  mean [trips-completed] of  thegroup
        let retired count  thegroup with [energy <= 0 and injured? = false ]
        let injured count  thegroup with [injured? = true ]
-       set new-history lput (lput (list ticks sum-trips  avg-trips retired injured) ?) new-history
+       set new-history lput (lput (list ticks sum-trips  avg-trips retired injured total-work) ?) new-history
+       ;;show new-history
     ]
   ]
   set group-history new-history
 end
+
+
+
+
 
 ;;
 ;; write-worker-stats
@@ -144,7 +154,7 @@ to write-worker-stats
   
 
   if group-history = 0 [
-    show "No grouip history available"
+    show "No group history available"
     stop
     ]
 
@@ -169,13 +179,70 @@ end
 
 
 ;;
+;; record-worker-summaries
+;;
+;; Creates an array listing summaries for each group for each repetition.  A group is workers who share the same source and dest.
+;;
+to record-worker-summaries
+  ;; building stats
+  show "worker summaries"
+  let myheaders ["source building" "dest building" "number of avoiders" "number of bold workers" "average trips for avoiders" "average trips for bold" "average time per trip avoiders" "average time per trip bold" "average ticks mudders get tired" "num injured workers" "total trips for group" "total bold trips"  "total avoider trips"  "total time working"]
+  let myout (list myheaders)
+  let summary []
+
+  foreach building-list [
+    let buildnum  item I-ID ?
+    foreach item I-Dest ?
+    [
+      let mystats group-stats  buildnum ?
+      ;;show mystats
+      foreach mystats [
+         set summary lput ? summary
+      ]
+      ;;show summary
+    ]
+  ]
+  
+  set group-summaries lput summary group-summaries
+  show group-summaries
+ ;; csv:to-file "C:\\WorksiteTrafficResults\\results-groupstats.csv" myout
+
+end
+
+;; write-repeated-worker-summaries
+;;
+;; all of the info from write-worker-summaries on a single line, and a line for every repeat
+;;
+to write-repeated-worker-summaries
+  let headerset ["source building" "dest building" "number of avoiders" "number of bold workers" "average trips for avoiders" "average trips for bold" "average time per trip avoiders" "average time per trip bold" "average ticks mudders get tired" "num injured workers" "total trips for group" "total bold trips"  "total avoider trips"  "total time working"]
+  let headers []
+  let myout []
+  foreach building-list [
+    let buildnum  item I-ID ?
+    foreach item I-Dest ?
+    [
+
+      ;;show mystats
+      foreach headerset [
+         set headers lput ? headers
+      ]
+    ]
+  ]  
+  
+  set group-summaries fput headers group-summaries
+  csv:to-file "C:\\WorksiteTrafficResults\\results-repeatedtrials.csv" group-summaries
+  show "results saved to C:\\WorksiteTrafficResults\\results-repeatedtrials.csv"
+end
+
+
+;;
 ;; write-worker-summaries
 ;;
 ;; Creates a file listing summaries for each group.  A group is workers who share the same source and dest.
 ;;
 to write-worker-summaries
   ;; building stats
-  let myheaders ["source building" "dest building" "number of avoiders" "number of bold workers" "average trips for avoiders" "average trips for bold" "average time per trip avoiders" "average time per trip bold" "average ticks mudders get tired" "num injured workers" "total trips for group" "total bold trips"  "total avoider trips" ]
+  let myheaders ["source building" "dest building" "number of avoiders" "number of bold workers" "average trips for avoiders" "average trips for bold" "average time per trip avoiders" "average time per trip bold" "average ticks mudders get tired" "num injured workers" "total trips for group" "total bold trips"  "total avoider trips"  "total time working"]
   let myout (list myheaders)
 
   foreach building-list [
@@ -205,13 +272,17 @@ to init-worker [  colorA colorB dest-buildings home-plate]
       set bump-count 0
       set jammed-count 0
       set time-in-obstacle 0
+      set time-worked 0
       set size 1
       set breed workers
       set injured? false
       set trips-completed 0
       set energy total-ticks
-      set is-bold? one-of [true false]
+      ifelse ignore-obsticles 
+      [set is-bold? true]
+      [set is-bold? one-of [true false] ]
       ifelse is-bold? = true
+         
       [  
          set-worker-bold colorA
       ][
@@ -345,6 +416,7 @@ to check-goal
   ;; did we reach the home?  go to destination
   if building-number = home-building and searching? = 0 [
     set-new-destination  destination-building 1 1
+    set working-ticks  (work-time home-building)
   ]
 end
 
@@ -369,6 +441,7 @@ to move-worker
 
     ;; let the worker spend some time working int the dest building.
     if working-ticks > 0 [
+      set time-worked time-worked + 1
       set working-ticks working-ticks - 1
       set energy energy - 1
       stop

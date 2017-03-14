@@ -14,7 +14,6 @@ globals [
   clr-danger
   clr-moveable-facility
   clr-fixed-facility
-  clr-fixed-facility2
   clr-void
   
   ;; obsticle behavioiurs - read from colour file.
@@ -62,7 +61,7 @@ to setup-colours
   set clr-danger 27 ; oranage
   set clr-moveable-facility 55  ;green
   set clr-fixed-facility 122 ; dark purple
-  set clr-fixed-facility2 127 ; lighter purple
+  set clr-fixed-facility 127 ; lighter purple
   set clr-void  0    ;  black, out of the map
 
   ;; behaviours in the obsticle patches
@@ -96,7 +95,7 @@ end
 ;; outside of the construction zone.
 ;;
 to add-blocks
-  let fixedcolors (list clr-moveable-facility clr-fixed-facility clr-fixed-facility2 clr-void)
+  let fixedcolors (list clr-moveable-facility clr-fixed-facility clr-fixed-facility clr-void)
   every .1
    [ if mouse-down?
      [ ask patch mouse-xcor mouse-ycor [
@@ -146,7 +145,7 @@ to read-color-file [ colorfile]
     if (clrpatch = "clr-road") [ set clr-road  clrnum ]
     if (clrpatch = "clr-moveable-facility") [ set clr-moveable-facility  clrnum ]
     if (clrpatch = "clr-fixed-facility") [ set clr-fixed-facility  clrnum ]
-    if (clrpatch = "clr-fixed-facility2") [ set clr-fixed-facility2  clrnum ]
+    if (clrpatch = "clr-fixed-facility") [ set clr-fixed-facility  clrnum ]
     if (clrpatch = "clr-void") [ set clr-void  clrnum ]
 
     ;; obsticle patches also have behaviours, read them too
@@ -189,7 +188,7 @@ to setup-patches [mapfile colorfile]
    read-color-file colorfile
 
   ;; read image
-  let mapcolors (list clr-path clr-road clr-slowmud clr-tiredmud clr-danger clr-moveable-facility clr-fixed-facility clr-fixed-facility2 clr-void)
+  let mapcolors (list clr-path clr-road clr-slowmud clr-tiredmud clr-danger clr-moveable-facility clr-fixed-facility clr-fixed-facility clr-void)
   bitmap:copy-to-pcolors (bitmap:import mapfile) true
   
 
@@ -204,7 +203,7 @@ to setup-patches [mapfile colorfile]
     if (not member? pcolor mapcolors) [
       if (pcolor <= 4) [ set pcolor clr-void ]
       if (pcolor >= 5 and pcolor <= 9) [ set pcolor clr-path ]
-      if (pcolor = 13 ) [set pcolor clr-fixed-facility2]
+      if (pcolor >= 12  and pcolor <= 13 ) [set pcolor clr-fixed-facility]
       if (pcolor >= 17 and pcolor <= 19 ) [ set pcolor clr-path ]
       if (pcolor = 20 ) [ set pcolor clr-void ]
       if (pcolor >= 26 and pcolor <= 29 ) [ set pcolor clr-danger ]
@@ -218,15 +217,15 @@ to setup-patches [mapfile colorfile]
       if (pcolor >= 80 and pcolor <= 83 ) [ set pcolor clr-void ]
       if (pcolor >= 90 and pcolor <= 93 ) [ set pcolor clr-void ]
       if (pcolor >= 100 and pcolor <= 105 ) [ set pcolor clr-void ]
-      if (pcolor = 105)  [ set pcolor clr-fixed-facility2 ]
+      if (pcolor = 105)  [ set pcolor clr-fixed-facility ]
       if (pcolor >= 106 and pcolor <= 109 ) [ set pcolor clr-path ]
       if (pcolor >= 110 and pcolor <= 115 ) [ set pcolor clr-void ]
       if (pcolor >= 120 and pcolor <= 123 ) [ set pcolor clr-fixed-facility]
-      if (pcolor >= 124 and pcolor <= 128 ) [ set pcolor clr-fixed-facility2 ]
+      if (pcolor >= 124 and pcolor <= 128 ) [ set pcolor clr-fixed-facility ]
       if (pcolor = 129 ) [ set pcolor clr-path ]
-      if (pcolor >= 130 and pcolor <= 134) [ set pcolor clr-fixed-facility2 ]
+      if (pcolor >= 130 and pcolor <= 134) [ set pcolor clr-fixed-facility ]
       if (not member? pcolor extracolors and not member? pcolor mapcolors) [
-        ;; show (word "unexpected color " pcolor " at " pxcor "," pycor)
+         show (word "unexpected color " pcolor " at " pxcor "," pycor)
          set extracolors lput pcolor extracolors  ;; did we miss any?
       ]
     ]

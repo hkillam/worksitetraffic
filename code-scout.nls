@@ -109,11 +109,13 @@ to create-breadcrumbs-from_buildinglist
                set breadcrumb-trails lput newtrail breadcrumb-trails
             ]
         ]
-        if not trail-exists buildnum ? false [
+        if not ignore-obsticles [
+         if not trail-exists buildnum ? false [
             let newtrail blaze-trail buildnum ? false
             if length newtrail > 6 [
               set breadcrumb-trails lput newtrail breadcrumb-trails
             ]
+         ]
         ]
       ]
     ]  

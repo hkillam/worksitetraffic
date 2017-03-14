@@ -5,6 +5,7 @@ __includes ["worldview.nls" "building-code.nls" "navigation.nls" "workers.nls" "
 globals [
   mouse-was-down?
   breadcrumb-trails
+  reset-counters
 ]
 
 
@@ -22,6 +23,7 @@ to setup ; linked with setup button on interface
   make-buildings-from-list
   setup-scouts
   create-breadcrumbs-from_buildinglist
+  set reset-counters total-ticks
 
   ;; diagnostic - show the breadcrumb trails for a moment.
   ;; note that these trails are invisible to the workers, and do not affect worker movement.
@@ -36,11 +38,11 @@ to setup ; linked with setup button on interface
         bitmap:export bitmap:from-view "results-bitmap-twistypaths.bmp"
   ]
 
-  setup-workers
+
 
   reset-ticks
   show timer
-
+setup-workers
 end
 
 
@@ -49,28 +51,36 @@ end
 
 to go  ;; forever button
 
-    reset-timer
+  reset-timer
 
-    ask workers
+  ask workers
   [
      check-goal         ;; when we reach our goal, set a new goal
      move-worker
   ]
 
-  if ticks = total-ticks [ask workers [die]  ;; make sure there aren't leftovers.
-  setup-workers]
-
-   record-group-stats
-
-  tick
+  record-group-stats
 
 
 
-  if ticks > (r * total-ticks)
+  if ticks >= reset-counters [
+    set reset-counters reset-counters + total-ticks
+    record-worker-summaries
+    write-results
+    ;; only call these two lines if the reports are written.
+    ask workers [die]  ;; make sure there aren't leftovers.
+    setup-workers
+  ]
+
+  if ticks > (repeats * total-ticks)
   [ write-results
+    ;;write-worker-summaries
+    write-repeated-worker-summaries
     show timer
     stop
   ]
+
+  tick
 
 end
 
@@ -174,8 +184,8 @@ end
 GRAPHICS-WINDOW
 214
 10
-646
-463
+644
+461
 -1
 -1
 2.0
@@ -189,9 +199,9 @@ GRAPHICS-WINDOW
 1
 1
 0
-210
+209
 0
-210
+209
 0
 0
 1
@@ -393,7 +403,7 @@ SWITCH
 335
 show-paths
 show-paths
-0
+1
 1
 -1000
 
@@ -469,17 +479,6 @@ s
 Number
 
 INPUTBOX
-692
-395
-743
-456
-r
-1
-1
-0
-Number
-
-INPUTBOX
 777
 275
 828
@@ -497,6 +496,28 @@ INPUTBOX
 406
 mst
 100
+1
+0
+Number
+
+SWITCH
+946
+13
+1088
+46
+ignore-obsticles
+ignore-obsticles
+0
+1
+-1000
+
+INPUTBOX
+690
+405
+745
+465
+repeats
+2
 1
 0
 Number
