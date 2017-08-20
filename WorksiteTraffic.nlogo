@@ -28,13 +28,13 @@ to setup ; linked with setup button on interface
   ;; diagnostic - show the breadcrumb trails for a moment.
   ;; note that these trails are invisible to the workers, and do not affect worker movement.
   if show-paths = true [
-    foreach breadcrumb-trails [draw-breadcrumb-trail ?]
+    foreach breadcrumb-trails [ row -> draw-breadcrumb-trail row]
         bitmap:export bitmap:from-view "results-bitmap-paths.bmp"
   ]
 
 
   if show-crooked-paths = true [
-    foreach twistycrumbs [draw-breadcrumb-trail ?]
+    foreach twistycrumbs [row -> draw-breadcrumb-trail row]
         bitmap:export bitmap:from-view "results-bitmap-twistypaths.bmp"
   ]
 
@@ -184,8 +184,8 @@ end
 GRAPHICS-WINDOW
 214
 10
-644
-461
+642
+439
 -1
 -1
 2.0
@@ -285,7 +285,7 @@ INPUTBOX
 146
 70
 total-ticks
-2000
+2000.0
 1
 0
 Number
@@ -336,7 +336,7 @@ max-turtles-per-square
 max-turtles-per-square
 1
 10
-1
+1.0
 1
 1
 dudes
@@ -441,7 +441,7 @@ INPUTBOX
 752
 247
 scout-size
-5
+5.0
 1
 0
 Number
@@ -462,7 +462,7 @@ INPUTBOX
 740
 316
 m
-1
+1.0
 1
 0
 Number
@@ -484,7 +484,7 @@ INPUTBOX
 828
 336
 mm
-200
+200.0
 1
 0
 Number
@@ -495,7 +495,7 @@ INPUTBOX
 830
 406
 mst
-100
+100.0
 1
 0
 Number
@@ -517,7 +517,7 @@ INPUTBOX
 745
 465
 repeats
-2
+2.0
 1
 0
 Number
@@ -875,9 +875,8 @@ false
 0
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
-
 @#$#@#$#@
-NetLogo 5.3
+NetLogo 6.0.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
@@ -893,7 +892,6 @@ true
 0
 Line -7500403 true 150 150 90 180
 Line -7500403 true 150 150 210 180
-
 @#$#@#$#@
 0
 @#$#@#$#@

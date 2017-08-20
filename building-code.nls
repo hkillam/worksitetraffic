@@ -56,8 +56,9 @@ to create-buildinglist
     if item 0 firstrow = "facility" [ set temp-building-list remove-item 0 temp-building-list]
 
     foreach temp-building-list [
-      let buildnum  item I-ID ?
-      let dest item I-Dest ?
+    bld ->
+      let buildnum  item I-ID bld
+      let dest item I-Dest bld
       
       ;; check destination(s) for a single value or a list
       ;; currently, this only works for two destinations.  need to loop for more than two
@@ -71,9 +72,9 @@ to create-buildinglist
       ]
       
       ;; update the building array
-      let new-building replace-item I-Dest ? dest
-      set new-building lput patch item 2 ? item 3 ? new-building  ;; index 13 is the center of the building, and we will reset this when the building is created/moded
-      let worker-zone (min (list item 4 ? item 5 ? ) / 2 ) - 2
+      let new-building replace-item I-Dest bld dest
+      set new-building lput patch item 2 bld item 3 bld new-building  ;; index 13 is the center of the building, and we will reset this when the building is created/moded
+      let worker-zone (min (list item 4 bld item 5 bld ) / 2 ) - 2
       set new-building lput worker-zone new-building  ;; index 14  ;; keep workers in this radius around the center
 
       set building-list lput new-building building-list
@@ -142,16 +143,17 @@ to write-building-stats
   let myout (list myheaders)
 
   foreach building-list [
-    let buildnum  item I-ID ?
+    bld ->
+    let buildnum  item I-ID bld
     if buildnum != "facility" [
       let bx1 min [pxcor] of patches with [building-number = buildnum]
       let by1 min [pycor] of patches with [building-number = buildnum]
       let bwid max [pxcor] of patches with [building-number = buildnum] - bx1
       let blen max [pycor] of patches with [building-number = buildnum] - by1
-      let dest item 0 item I-Dest ?
-      if length item I-Dest ? > 1 [ set dest (word "\"" item 0 item I-Dest ? "," item 1 item I-Dest ? "\"") ]  ;; note - only allows two, need more complex processing for more.
-      let buildname (word "\"" item I-Name ?  "\"" )
-      set myout lput (list buildnum buildname bx1 by1 bwid blen item I-NumWorkers ? dest item I-MudSlows ? item I-MudTires ? item I-Harm ? item I-MinWork ? item I-MaxWork ?) myout
+      let dest item 0 item I-Dest bld
+      if length item I-Dest bld > 1 [ set dest (word "\"" item 0 item I-Dest bld "," item 1 item I-Dest bld "\"") ]  ;; note - only allows two, need more complex processing for more.
+      let buildname (word "\"" item I-Name bld  "\"" )
+      set myout lput (list buildnum buildname bx1 by1 bwid blen item I-NumWorkers bld dest item I-MudSlows bld item I-MudTires bld item I-Harm bld item I-MinWork bld item I-MaxWork bld) myout
     ]
   ]
   csv:to-file "C:\\WorksiteTrafficResults\\results-buildings.csv" myout
@@ -165,11 +167,12 @@ end
 ;;
 to-report center-of [ building-num]
   foreach building-list [
-    if building-num = item 0 ? [
-      if not is-patch? item 15 ? [
+    bld ->
+    if building-num = item 0 bld [
+      if not is-patch? item 15 bld [
         report reset-center-of-building building-num
       ]
-      report item 15 ?
+      report item 15 bld
     ]
   ]
   
@@ -194,8 +197,9 @@ to-report shoot-a-dart [ building-num]
   
   ;; look up the radius
   foreach building-list [
-    if building-num = item 0 ? [
-      set theradius item 16 ?
+    bld ->
+    if building-num = item 0 bld [
+      set theradius item 16 bld
       
     ]
   ]
@@ -228,8 +232,9 @@ to-report reset-center-of-building [building-num]
 
     let ndx 0
     foreach building-list [
-      if building-num = item 0 ? [
-            let new-building replace-item 15  ? patch bxcenter bycenter  ;; index 15 is the center of the building, and we will reset this when the building is created/moded
+    bld ->
+      if building-num = item 0 bld [
+            let new-building replace-item 15  bld patch bxcenter bycenter  ;; index 15 is the center of the building, and we will reset this when the building is created/moded
             set building-list replace-item ndx building-list new-building
       ]
       set ndx ndx + 1
@@ -306,14 +311,15 @@ end
 to restore-background [building-num]
   foreach background-colours 
   [
-    if item 0 ? = building-num
+    row ->
+    if item 0 row = building-num
     [
-      let background item 1 ?
+      let background item 1 row
       foreach background
       [
-        ask patch item 0 ? item 1 ? 
+        ask patch item 0 row item 1 row 
         [ 
-          set pcolor item 2 ? 
+          set pcolor item 2 row 
           set building-number 0
         ]
       ]
@@ -362,7 +368,8 @@ to preserve-background [ building-num background ]
   if is-list? background-colours [
     foreach background-colours 
     [
-      if item 0 ? = building-num
+      row ->
+      if item 0 row = building-num
       [
         set background-colours replace-item index background-colours (list building-num background)
         stop
@@ -378,10 +385,11 @@ end
 
 to-report work-time [building-num]
   foreach building-list [
-    if building-num = item 0 ? [
-      let min-time item 11 ?
-      let range item 12 ? - item 11 ?
-      let the-time random (range) + min-time
+    row ->
+    if building-num = item 0 row [
+      let min-time item 11 row
+      let myrange item 12 row - item 11 row
+      let the-time random (myrange) + min-time
       report the-time
     ]
   ]
@@ -412,13 +420,14 @@ end
 ;;
 to  make-buildings-from-list[  ]
   foreach building-list [
-    let buildnum  item 0 ?
+    row ->
+    let buildnum  item 0 row
     if buildnum != "facility" [
-      let buildname  item 1 ?
-      let x1  item 2 ?
-      let y1  item 3 ?
-      let width  item 4 ?
-      let height  item 5 ?
+      let buildname  item 1 row
+      let x1  item 2 row
+      let y1  item 3 row
+      let width  item 4 row
+      let height  item 5 row
       let x2  x1 + width
       let y2  y1 + height
 
@@ -450,7 +459,8 @@ end
 ;; Chose a random location for every building.  Let's dance.  
 to make-buildings-dance
   foreach building-list [
-    random-locate item I-ID ?
+    row ->
+    random-locate item I-ID row
   ]
 
    ;; delete old breadcrumbs, make new ones.  People too, we need them cleared to make breadcrumbs.
@@ -472,9 +482,10 @@ to random-locate [buildingid]
   let len 4
   let wid 4
   foreach building-list [
-    if buildingid = item I-ID ? [
-      set len item I-height ?
-      set wid item I-width ?
+    row ->
+    if buildingid = item I-ID row [
+      set len item I-height row
+      set wid item I-width row
     ]
   ]
   

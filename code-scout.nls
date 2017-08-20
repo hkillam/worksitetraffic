@@ -4,7 +4,7 @@
 ;; Before the workers show up, some scouts travel around finding the best paths, and leaving maps.
 ;;
 
-breed [ scouts ]
+breed [ scouts  scout ]
 
 globals [
   ;; indexes in a single breadcrumbs array
@@ -98,20 +98,22 @@ end
 to create-breadcrumbs-from_buildinglist
   
     foreach building-list [
-      let buildnum  item I-ID ?
-      let dest item I-Dest ?
+    bld ->
+      let buildnum  item I-ID bld
+      let dest item I-Dest bld
 
       ;; make sure there is a breadcrumb trail for every destination
       foreach dest [
-        if not trail-exists buildnum ? true [
-            let newtrail blaze-trail buildnum ? true
+      row ->
+        if not trail-exists buildnum row true [
+            let newtrail blaze-trail buildnum row true
             if length newtrail > 6 [
                set breadcrumb-trails lput newtrail breadcrumb-trails
             ]
         ]
         if not ignore-obsticles [
-         if not trail-exists buildnum ? false [
-            let newtrail blaze-trail buildnum ? false
+         if not trail-exists buildnum row false [
+            let newtrail blaze-trail buildnum row false
             if length newtrail > 6 [
               set breadcrumb-trails lput newtrail breadcrumb-trails
             ]
@@ -234,12 +236,13 @@ to-report blaze-trail [src dst bold]
     let besttrail (list 0 0 0 100000)
     let newtrail (list 0 0 0 1000)
     foreach [1 2 3] [
+       cycle ->
        ;; right
-       set newtrail create-breadcrumbs src dst bold true ?
+       set newtrail create-breadcrumbs src dst bold true cycle
        if length newtrail > 6 and item I-traillength newtrail < item I-traillength besttrail 
        [ set besttrail newtrail ]
        ;; left
-       set newtrail create-breadcrumbs src dst bold false ?
+       set newtrail create-breadcrumbs src dst bold false cycle
        if length newtrail > 6 and item I-traillength newtrail < item I-traillength besttrail 
        [ set besttrail newtrail ]
     ]
@@ -261,9 +264,10 @@ to-report measure-breadcrumb-trail [trail]
       move-to  pt1
       
       foreach trail [
-        if is-patch? ? [
-          set thelength thelength + distance ?
-          move-to ?
+      row ->
+        if is-patch? row [
+          set thelength thelength + distance row
+          move-to row
         ]
       ]
       die;

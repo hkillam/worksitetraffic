@@ -14,9 +14,10 @@
 ;;
 to-report trail-exists [src dst bold]
   foreach breadcrumb-trails [
-    if item 0 ? = src and item 1 ? = dst and item 2 ? = bold 
+    row ->
+    if item 0 row = src and item 1 row = dst and item 2 row = bold 
     [ report true ]
-    if item 1 ? = src and item 0 ? = dst and item 2 ? = bold
+    if item 1 row = src and item 0 row = dst and item 2 row = bold
     [ report true ]
   ]  
   report false
@@ -46,8 +47,9 @@ without-interruption [
     ]
     
     foreach path [
-      if is-patch? ? [
-        ask scouts [ move-to ?  ]
+        thepath ->
+      if is-patch? thepath [
+        ask scouts [ move-to thepath  ]
       ]
     ]
   ]
@@ -67,6 +69,7 @@ to-report path-clear [pt1 pt2 radius]
   let isclear true 
   let dude who
   let debug-mode false
+  let arrived? false
   
   if who = -1 [set debug-mode true]
   hatch 1 [ 
@@ -90,16 +93,16 @@ to-report path-clear [pt1 pt2 radius]
     
    
     ;; if (not is-allowed-patch patch-ahead step-counter 2 allowedpatches)
-    while [step-counter < dist + 1 and isclear = true] [
+    while [step-counter < dist + 1 and isclear = true and arrived? = false] [
       if debug-mode = true [
 ;;        show ( word patch-ahead step-counter " "  [pcolor] of patch-ahead step-counter) 
 ;;        show is-allowed-patch patch-ahead step-counter radius
         
       ]
-      if  patch-ahead step-counter = pt2 [ die report isclear]
+      if  patch-ahead step-counter = pt2 [ set arrived? true die ]
       set step-counter step-counter + 1
       
-      if ( is-allowed-patch patch-ahead step-counter radius = false) [
+      if ( arrived? = false and is-allowed-patch patch-ahead step-counter radius = false) [
         if debug-mode = true [
           show (word "problem " step-counter " steps ahead at patch " patch-ahead step-counter " colour " [pcolor] of patch-ahead step-counter)
           show (word "from patch " pt1 " to patch " pt2 " only using " allowed-patches)
@@ -108,6 +111,7 @@ to-report path-clear [pt1 pt2 radius]
       ]
     ]
     
+   
     ;; diagnostic 
     if isclear = true and debug-mode = true [
       ;;pen-down
@@ -133,9 +137,10 @@ to-report bestheading-path [mypaths]
    let myheading  heading
    let step-count  0
    foreach mypaths [
-     if  item 1 ? > step-count [
-       set myheading  item 0 ?
-       set step-count  item 1 ?
+    row ->
+     if  item 1 row > step-count [
+       set myheading  item 0 row
+       set step-count  item 1 row
      ]
    ]
    report myheading
@@ -171,11 +176,11 @@ end
 to-report select-breadcrumbs [src dest bold ]
    let trailid 0
   
-   foreach breadcrumb-trails
-   [ 
-      if src = item 0 ? and dest = item 1 ? and bold = item 2 ? [ report ( list trailid false 4) ]
-      if src = item 1 ? and dest = item 0 ? and bold = item 2 ? [ report ( list trailid true (length ? - 1)) ]
-      set trailid trailid + 1
+   foreach breadcrumb-trails  [ 
+    row -> 
+      if src = item 0 row and dest = item 1 row and bold = item 2 row [ report ( list trailid false 4) ]
+      if src = item 1 row and dest = item 0 row and bold = item 2 row [ report ( list trailid true (length row - 1)) ]
+      set trailid trailid + 1 
    ]
    report (list )
 end
