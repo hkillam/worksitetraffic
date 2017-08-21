@@ -8,7 +8,8 @@
 breed [ workers worker  ]
 
 globals [
-  group-history   ;; an array for each group:  source, dest, bold, num-in-group, list of trip counts at each tick
+  worker-groups    ;;
+  group-history    ;; an array for each group:  source, dest, bold, num-in-group, list of trip counts at each tick
   group-summaries  ;; an array for each repetition of the trial
   
   ;; indexes in the group-history array
@@ -16,6 +17,19 @@ globals [
   I-grpdst
   I-grpbold
   I-grpcount
+  
+  ;; indexes in the worker-groups array
+  IWG-ID
+  IWG-NAME
+  IWG-QUANTITY
+  IWG-FROM
+  IWG-TO
+  IWG-MEAN-WORK-TIME
+  IWG-STD-DEV-WORK-TIME
+  IWG-SLOW-IN-MUD
+  IWG-TIRED-IN-MUD
+  IWG-RISK-DANGER
+  IWG-COLOUR
 ]
 
 
@@ -46,62 +60,69 @@ workers-own [
 ]
 
 
+;; init-worker-constants
+to init-worker-constants
+  set IWG-ID                0
+  set IWG-NAME              1
+  set IWG-QUANTITY          2
+  set IWG-FROM              3
+  set IWG-TO                4
+  set IWG-MEAN-WORK-TIME    5
+  set IWG-STD-DEV-WORK-TIME 6
+  set IWG-SLOW-IN-MUD       7
+  set IWG-TIRED-IN-MUD      8
+  set IWG-RISK-DANGER       9
+  set IWG-COLOUR           10
+  
+  set I-grpsrc   0
+  set I-grpdst   1
+  set I-grpbold  2   ;; true/false
+  set I-grpcount 3  
+end
+
+
 ;;
 ;; setup-workers
 ;;
 ;; called from setup function to read building list and generate all of the workers
 ;;
 to setup-workers
-  set I-grpsrc   0
-  set I-grpdst   1
-  set I-grpbold  2   ;; true/false
-  set I-grpcount 3
+  init-worker-constants
   set group-history []
   set group-summaries []   ;; group history for every repetition.
+  let groupids [];
   
+  set worker-groups csv:from-file "workers.csv" 
+  set worker-groups remove-item 0 worker-groups  ;; remove headers row
+  
+  foreach worker-groups [
+    group ->
+    show group
+    let groupid item IWG-ID group
+      if not member? groupid groupids [
+        set groupids lput groupid groupids
+        let numworkers item IWG-QUANTITY group
+        let color1 (item IWG-COLOUR group) - 1
+        let color2 item IWG-COLOUR group + 1
+        create-workers numworkers [
+           let src item IWG-FROM  group
+           let dest item IWG-TO  group
+           move-to one-of patches with [building-number = src]
 
-
-  foreach building-list [
-    row ->
-    let buildnum  item I-ID row
-    if buildnum != "facility" [
-      let buildname  item I-Name row
-      let numworkers  item I-NumWorkers row 
-      let dest item I-Dest row
-
-      create-workers numworkers [
-        move-to one-of patches with [building-number = buildnum]
-        let color1 75
-        let color2 65
-        if (buildnum = 14) [ set color1 orange set color2 yellow ]
-        if (buildnum = 18) [ set color1 95 set color2 85 ]
-        if (buildnum = 15) [ set color1 115 set color2 125  ]
-        init-worker color1 color2 dest buildnum
-      ]
-      
-      ;; for workers going through the danger zone, xx% of them will be injured.  This is a change from calculating it per trip or per step.
-      let hazard-pay item I-Harm row
-      ask workers with [home-building = buildnum and is-bold? = true and hazard-pay > 0] [  
-        ;; injury rate is found in buildings.csv, and made into a global variable
-        let odds random 100
-        if odds < 2 [ set planned-injury random total-ticks]
-      ]
-      
-      ;; create the list of group records
-      if is-list? dest [
-        foreach dest
-        [
-          bld ->
-          let bold-workers count workers with [home-building = buildnum and destination-building = bld and is-bold? = true]
-          let avoiders count workers with [home-building = buildnum and destination-building = bld and is-bold? = false]
-          ;;show (word "bold: " bold-workers " chicken: " avoiders)
-          set group-history lput  (list buildnum bld true bold-workers) group-history
-          set group-history lput  (list buildnum bld false avoiders) group-history
+           show color2
+           init-worker color1 color2 dest src
         ]
-      ]
+      let hazard-pay item IWG-RISK-DANGER group
     ]
   ]
 
+      ;; for workers going through the danger zone, xx% of them will be injured.  This is a change from calculating it per trip or per step.
+;;      ask workers with [is-bold? = true and hazard-pay > 0] [  
+        ;; injury rate is found in buildings.csv, and made into a global variable
+;;        let odds random 100
+;;        if odds < 2 [ set planned-injury random total-ticks]
+;;      ]
+  
 end
 
 to fresh-workers
@@ -275,8 +296,8 @@ end
 ;; Initializes a single worker, personality, destination.
 ;; input: colours for bold/timid, list of possible destinations, home
 ;;
-to init-worker [  colorA colorB dest-buildings home-plate]
-      let dest one-of dest-buildings
+to init-worker [  colorA colorB dest home-plate]
+      ;;let dest one-of dest-buildings
       set home-building home-plate
       set destination-building dest
       set bump-count 0
