@@ -2,12 +2,12 @@ groupid,name,quantity,first building,dest,mean work time,std deviation,slow in m
 1,peons,10,2,4,70,20,1,0,1,75,One row for each segment of the route.
 2,drudges,10,3,1,30,20,1,0,1,95,names and quantities are only needed the first time a group is listed.
 3,minions,10,4,3,100,20,1,0,0,115,
-4,sycophants,10,3,2,60,20,1,0,0,55,
+4,sycophants,10,3,2,60,20,1,0,0,55,Work is done at the beginning of each route.
 5,sluggards,10,2,1,120,20,1,0,0,35,
-1,,,4,3,66,10,0,1,0,,
-1,,,3,2,66,10,0,1,0,,
-2,,,1,4,100,20,1,0,0,,
-2,,,4,3,100,20,1,0,0,,
-3,,,3,4,100,20,1,0,0,,
-4,,,2,3,70,20,1,0,1,,
-5,,,1,2,70,20,1,0,1,,
+1,,,4,3,66,10,,,,,
+1,,,3,2,66,10,,,,,
+2,,,1,4,100,20,,,,,
+2,,,4,3,100,20,,,,,
+3,,,3,4,100,20,,,,,
+4,,,2,3,70,20,,,,,
+5,,,1,2,70,20,,,,,

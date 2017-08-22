@@ -11,10 +11,13 @@ globals [
   worker-groups    ;;
   group-history    ;; an array for each group:  source, dest, bold, num-in-group, list of trip counts at each tick
   group-summaries  ;; an array for each repetition of the trial
+  groupids         ;; a list of groupids, because ids are repeated in worker-groups
   
   ;; indexes in the group-history array
   I-grpsrc
   I-grpdst
+  I-grpid
+  I-grpname
   I-grpbold
   I-grpcount
   
@@ -34,7 +37,9 @@ globals [
 
 
 workers-own [
-  searching?            ;; 1 if going to the materials, 0 if returning\
+  groupid               ;; id given in workers.csv
+  name                  ;; from workers.csv
+;;  searching?            ;; 1 if going to the materials, 0 if returning\
   is-bold?              ;; true, will go through obsticles
   energy                ;; start at tick-count, at zero just quit
   allowed-patches       ;; colours of patches this guy can step on
@@ -76,6 +81,8 @@ to init-worker-constants
   
   set I-grpsrc   0
   set I-grpdst   1
+  set I-grpid    0
+  set I-grpname  1
   set I-grpbold  2   ;; true/false
   set I-grpcount 3  
 end
@@ -90,32 +97,32 @@ to setup-workers
   init-worker-constants
   set group-history []
   set group-summaries []   ;; group history for every repetition.
-  let groupids [];
+  set groupids [];
   
   set worker-groups csv:from-file "workers.csv" 
   set worker-groups remove-item 0 worker-groups  ;; remove headers row
   
   foreach worker-groups [
     group ->
-    show group
-    let groupid item IWG-ID group
-      if not member? groupid groupids [
-        set groupids lput groupid groupids
+    let newgroupid item IWG-ID group
+      if not member? newgroupid groupids [
+        set groupids lput newgroupid groupids
         let numworkers item IWG-QUANTITY group
         let color1 (item IWG-COLOUR group) - 1
         let color2 item IWG-COLOUR group + 1
         create-workers numworkers [
            let src item IWG-FROM  group
            let dest item IWG-TO  group
+           set groupid newgroupid
+           set name item IWG-NAME group
            move-to one-of patches with [building-number = src]
-
-           show color2
            init-worker color1 color2 dest src
         ]
       let hazard-pay item IWG-RISK-DANGER group
     ]
   ]
 
+  ;; todo - set injury rates back on with new model
       ;; for workers going through the danger zone, xx% of them will be injured.  This is a change from calculating it per trip or per step.
 ;;      ask workers with [is-bold? = true and hazard-pay > 0] [  
         ;; injury rate is found in buildings.csv, and made into a global variable
@@ -148,7 +155,7 @@ to record-group-stats
   foreach group-history
   [
     row ->
-    let thegroup workers with [is-bold? = item I-grpbold row and home-building = item I-grpsrc row and destination-building = item I-grpdst row ]
+    let thegroup workers with [groupid = item I-grpid row and is-bold? = item I-grpbold row ]
     if count thegroup > 0 [
        let sum-trips  sum [trips-completed] of  thegroup
        let total-work  sum [time-worked] of  thegroup
@@ -161,6 +168,48 @@ to record-group-stats
     ]
   ]
   set group-history new-history
+end
+
+
+;;
+;; group-stats
+;;
+;; For each group with the same source and dest, drop some facts.  Used at the end of the run.
+;;
+to-report group-stats [thegroupid]
+  
+    let avoiders 0
+    let avoiders-trips 0
+    let avoiders-triptime 0
+    let total-avoider-trips 0
+
+    if not ignore-obsticles    [ 
+      set avoiders count workers with [is-bold? = false and groupid = thegroupid]
+    ]
+    let bold count workers with [is-bold? = true and groupid = thegroupid]
+    let bold-trips  mean [trips-completed] of  workers with [is-bold? = true and groupid = thegroupid]
+    let bold-triptime 0
+    if bold-trips > 0 [ set bold-triptime  total-ticks / bold-trips]
+    if not ignore-obsticles [
+      set avoiders-trips  mean [trips-completed] of  workers with [is-bold? = false and groupid = thegroupid]
+      set avoiders-triptime 0
+      if avoiders-trips > 0 [ set avoiders-triptime total-ticks / avoiders-trips ]
+    ]
+    
+    let nappers workers with [no-energy-tick > 0 and injured? = false and groupid = thegroupid]
+    let napper-times 0
+    if count nappers > 0 [set napper-times mean  [no-energy-tick] of nappers]
+    
+    let num-injured count workers with [injured? = true and groupid = thegroupid]
+    
+    let total-trips sum [trips-completed]  of  workers with [groupid = thegroupid]
+    let total-bold-trips sum [trips-completed]  of  workers with [is-bold? = true and groupid = thegroupid]
+    if not ignore-obsticles [
+      set total-avoider-trips sum [trips-completed]  of  workers with [is-bold? = false and groupid = thegroupid]
+    ]
+    let total-worktime sum [time-worked] of  workers with [groupid = thegroupid]
+
+    report (list thegroupid thegroupid avoiders bold avoiders-trips bold-trips avoiders-triptime bold-triptime napper-times num-injured total-trips total-bold-trips total-avoider-trips total-worktime)
 end
 
 
@@ -193,10 +242,10 @@ to write-worker-stats
      ]
 
      ;; create a filename, and write the results
-     let filename (word "C:\\WorksiteTrafficResults\\results-group" item I-grpsrc hist "to" item I-grpdst hist)
+     let filename (word "C:\\WorksiteTrafficResults\\results-group-" item I-grpid hist )
      ifelse item I-grpbold hist = true
-     [ set filename (word filename "bold.csv") ]
-     [ set filename (word filename "avoider.csv") ]
+     [ set filename (word filename "-bold.csv") ]
+     [ set filename (word filename "-avoider.csv") ]
      csv:to-file filename myout
   ]
   
@@ -216,19 +265,16 @@ to record-worker-summaries
   let myout (list myheaders)
   let summary []
 
-  foreach building-list [
-    bld ->
-    let buildnum  item I-ID bld
-    foreach item I-Dest bld
-    [
-      row ->
-      let mystats group-stats  buildnum row
+  foreach groupids [
+    thegroupid ->
+
+      let mystats group-stats  thegroupid
       ;;show mystats
       foreach mystats [
+      row ->
          set summary lput row summary
       ]
       ;;show summary
-    ]
   ]
   
   set group-summaries lput summary group-summaries
@@ -271,18 +317,13 @@ end
 ;;
 to write-worker-summaries
   ;; building stats
-  let myheaders ["source building" "dest building" "number of avoiders" "number of bold workers" "average trips for avoiders" "average trips for bold" "average time per trip avoiders" "average time per trip bold" "average ticks mudders get tired" "num injured workers" "total trips for group" "total bold trips"  "total avoider trips"  "total time working"]
+  let myheaders ["groupid" "group name" "number of avoiders" "number of bold workers" "average trips for avoiders" "average trips for bold" "average time per trip avoiders" "average time per trip bold" "average ticks mudders get tired" "num injured workers" "total trips for group" "total bold trips"  "total avoider trips"  "total time working"]
   let myout (list myheaders)
 
-  foreach building-list [
-    bld ->
-    let buildnum  item I-ID bld
-    foreach item I-Dest bld
-    [
-      row ->
-      let mystats group-stats  buildnum row
+  foreach groupids [
+    grp ->
+      let mystats group-stats  grp
       set myout lput mystats myout
-    ]
   ]
   csv:to-file "C:\\WorksiteTrafficResults\\results-groupstats.csv" myout
 
@@ -322,7 +363,7 @@ to init-worker [  colorA colorB dest home-plate]
 
       set no-energy-tick 0
       set breadcrumb-num 0
-      set-new-destination dest 1 0
+      set-new-destination dest 0
       set steps-from-path 0
       set planned-injury 0    ;; most people don't expect to be injured, but some will have a sword of Damacles over their heads.  They just don't know it  yet.
 end
@@ -369,14 +410,15 @@ end
 ;; workers - follow the breadcrumbs
 ;; called when:  create people, arrive at destination, buildings move
 ;;
-to set-new-destination [new-dest new-searching add-trip ]
+to set-new-destination [new-dest add-trip ]
+  show (word "set-new-destination to " new-dest)
       let thegoal one-of patches with [building-number = new-dest]
       ask patch pxcor pycor [
          set thegoal shoot-a-dart new-dest
       ]
       set goal thegoal
+      set destination-building new-dest
       face goal
-      set searching?  new-searching
       set trips-completed trips-completed + add-trip
       set dice-tossed? 0
       set hugging-edges-steps 0
@@ -420,11 +462,8 @@ end
 ;;
 to redirect-workers
          ;; some workers were heading to this building, redirect them to the new destination
-         ask workers with [destination-building = building-to-move and searching? = true][
-           set-new-destination destination-building searching? 0
-         ]
-         ask workers with [home-building = building-to-move and searching? = false][
-           set-new-destination home-building searching? 0
+         ask workers with [destination-building = building-to-move][
+           set-new-destination destination-building  0
          ]
 end
 
@@ -437,20 +476,28 @@ end
 ;; worker procedure - if they have reached the goal, set a new one
 ;;
 to check-goal
-
   ;; did we reach the destination?  return to home!
-  if building-number = destination-building and searching? = 1 [
-    set-new-destination  home-building 0 0
-    set working-ticks  (work-time destination-building)
+  if building-number = destination-building  [
+  show (word "current building: " building-number " goal: " destination-building " group: " groupid)
+    foreach worker-groups [
+      group ->
+       let from item IWG-FROM group
+       let rowgroupid item IWG-ID group
+      
+      ;; the right row has the same group and starts from the building we are at now.
+      if groupid = rowgroupid and building-number = from [
+        show group
+          let newdest item IWG-TO group 
+         let add-lap  0
+          if newdest = home-building [ set add-lap  1]
+          set-new-destination  newdest add-lap
+        
+          set working-ticks  random-normal item IWG-MEAN-WORK-TIME group item IWG-STD-DEV-WORK-TIME group
+      ]
+    ]
   ]
 
-  ;; did we reach the home?  go to destination
-  if building-number = home-building and searching? = 0 [
-    set-new-destination  destination-building 1 1
-    set working-ticks  (work-time home-building)
-  ]
 end
-
 
 
 
@@ -545,14 +592,12 @@ to move-worker
            
            ;; see if this guy is a buddy going the same direction as you
            let buddies false
-           let my-group-id (list searching? home-building destination-building)
+           let my-goingto destination-building
            ask turtles-on (patch-ahead 1) [
-             if searching? = (item 0 my-group-id)
-             and home-building = item 1 my-group-id
-             and destination-building = item 2 my-group-id
+             if destination-building = my-goingto
              [
                set buddies true;
-               if debug = true [show (word "blocked by buddies")]
+               if debug = true [show (word "blocked by travel buddies")]
              ]
            ]
            
