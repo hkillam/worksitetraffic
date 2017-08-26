@@ -179,24 +179,32 @@ end
 ;;
 to-report group-stats [thegroupid]
   
-    let avoiders 0
+    let numavoiders 0
     let avoiders-trips 0
     let avoiders-triptime 0
     let total-avoider-trips 0
+    let bold-trips 0
+    let bold-triptime 0
+  
+    let timidgroup workers with [is-bold? = false and groupid = thegroupid]
+    let boldgroup workers with [is-bold? = true and groupid = thegroupid]
 
     if not ignore-obsticles    [ 
-      set avoiders count workers with [is-bold? = false and groupid = thegroupid]
+      set numavoiders count timidgroup
     ]
-    let bold count workers with [is-bold? = true and groupid = thegroupid]
-    let bold-trips  mean [trips-completed] of  workers with [is-bold? = true and groupid = thegroupid]
-    let bold-triptime 0
-    if bold-trips > 0 [ set bold-triptime  total-ticks / bold-trips]
-    if not ignore-obsticles [
-      set avoiders-trips  mean [trips-completed] of  workers with [is-bold? = false and groupid = thegroupid]
-      set avoiders-triptime 0
-      if avoiders-trips > 0 [ set avoiders-triptime total-ticks / avoiders-trips ]
+    let bold count boldgroup
+  
+    if count boldgroup > 0 [
+       set bold-trips  mean [trips-completed] of boldgroup
+       if bold-trips > 0 [ set bold-triptime  total-ticks / bold-trips]
     ]
-    
+  
+       if not ignore-obsticles [
+         set avoiders-trips  mean [trips-completed] of  timidgroup
+         set avoiders-triptime 0
+         if avoiders-trips > 0 [ set avoiders-triptime total-ticks / avoiders-trips ]
+       ]
+  
     let nappers workers with [no-energy-tick > 0 and injured? = false and groupid = thegroupid]
     let napper-times 0
     if count nappers > 0 [set napper-times mean  [no-energy-tick] of nappers]
@@ -204,13 +212,13 @@ to-report group-stats [thegroupid]
     let num-injured count workers with [injured? = true and groupid = thegroupid]
     
     let total-trips sum [trips-completed]  of  workers with [groupid = thegroupid]
-    let total-bold-trips sum [trips-completed]  of  workers with [is-bold? = true and groupid = thegroupid]
+    let total-bold-trips sum [trips-completed]  of  boldgroup
     if not ignore-obsticles [
-      set total-avoider-trips sum [trips-completed]  of  workers with [is-bold? = false and groupid = thegroupid]
+      set total-avoider-trips sum [trips-completed]  of  timidgroup
     ]
     let total-worktime sum [time-worked] of  workers with [groupid = thegroupid]
 
-    report (list thegroupid thegroupid avoiders bold avoiders-trips bold-trips avoiders-triptime bold-triptime napper-times num-injured total-trips total-bold-trips total-avoider-trips total-worktime)
+    report (list thegroupid thegroupid numavoiders bold avoiders-trips bold-trips avoiders-triptime bold-triptime napper-times num-injured total-trips total-bold-trips total-avoider-trips total-worktime)
 end
 
 
@@ -450,17 +458,17 @@ to set-new-destination [new-dest add-trip ]
       if new-dest = home-building [set src destination-building]
       let crumbly select-breadcrumbs src new-dest is-bold?
 
-      ifelse length breadcrumb-trails > 6 [
+      if length breadcrumb-trails > 6 [
          if length crumbly > 2 [
            let mytrail item (item 0 crumbly) breadcrumb-trails
          ]
-  ][show ("Less than 6 breadcrumb tails - what does that even mean?")]
+      ]
       
-      ifelse length crumbly > 2 [
+      if length crumbly > 2 [
         set trail-id item 0 crumbly     
         set breadcrumb-reverse item 1 crumbly     ;; true/false
         set breadcrumb-num item 2 crumbly    
-    ][show ("no trail - direct path?") ]
+      ]
 end
 
 
