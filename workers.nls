@@ -111,6 +111,7 @@ to setup-workers
         let color1 (item IWG-COLOUR group) - 1
         let color2 item IWG-COLOUR group + 1
         create-workers numworkers [
+        if newgroupid = "1" [ pen-down ]
            let src item IWG-FROM  group
            let dest item IWG-TO  group
            set groupid newgroupid
@@ -288,9 +289,17 @@ end
 ;; all of the info from write-worker-summaries on a single line, and a line for every repeat
 ;;
 to write-repeated-worker-summaries
-  let headerset ["source building" "dest building" "number of avoiders" "number of bold workers" "average trips for avoiders" "average trips for bold" "average time per trip avoiders" "average time per trip bold" "average ticks mudders get tired" "num injured workers" "total trips for group" "total bold trips"  "total avoider trips"  "total time working"]
+  let headerset ["group ID" "group name" "number of avoiders" "number of bold workers" "average trips for avoiders" "average trips for bold" "average time per trip avoiders" "average time per trip bold" "average ticks mudders get tired" "num injured workers" "total trips for group" "total bold trips"  "total avoider trips"  "total time working"]
   let headers []
   let myout []
+  
+  foreach worker-groups [
+    grp ->
+      let buildnum  item IWG-FROM grp
+      let dest item IWG-TO grp
+  ]
+  
+  
   foreach building-list [
     bld ->
     let buildnum  item I-ID bld
@@ -411,14 +420,14 @@ end
 ;; called when:  create people, arrive at destination, buildings move
 ;;
 to set-new-destination [new-dest add-trip ]
-  show (word "set-new-destination to " new-dest)
+
       let thegoal one-of patches with [building-number = new-dest]
       ask patch pxcor pycor [
          set thegoal shoot-a-dart new-dest
       ]
       set goal thegoal
       set destination-building new-dest
-      face goal
+      face-nowrap goal
       set trips-completed trips-completed + add-trip
       set dice-tossed? 0
       set hugging-edges-steps 0
@@ -441,17 +450,17 @@ to set-new-destination [new-dest add-trip ]
       if new-dest = home-building [set src destination-building]
       let crumbly select-breadcrumbs src new-dest is-bold?
 
-      if length breadcrumb-trails > 6 [
+      ifelse length breadcrumb-trails > 6 [
          if length crumbly > 2 [
            let mytrail item (item 0 crumbly) breadcrumb-trails
          ]
-      ]
+  ][show ("Less than 6 breadcrumb tails - what does that even mean?")]
       
-      if length crumbly > 2 [
+      ifelse length crumbly > 2 [
         set trail-id item 0 crumbly     
         set breadcrumb-reverse item 1 crumbly     ;; true/false
         set breadcrumb-num item 2 crumbly    
-      ]
+    ][show ("no trail - direct path?") ]
 end
 
 
@@ -468,6 +477,43 @@ to redirect-workers
 end
 
 
+;;
+;; create-breadcrumbs-from_buildinglist
+;;
+;; AFTER building list is built,
+;; AFTER buildings are all drawn,
+;; BEFORE workers are created
+;;
+to create-breadcrumbs-from_workerlist
+  init-worker-constants
+  set worker-groups csv:from-file "workers.csv" 
+  set worker-groups remove-item 0 worker-groups  ;; remove headers row  
+
+  foreach worker-groups [
+    grp ->
+      let buildnum  item IWG-FROM grp
+      let dest item IWG-TO grp
+
+        if not trail-exists buildnum dest true [
+            let newtrail blaze-trail buildnum dest true
+            if length newtrail > 6 [
+               set breadcrumb-trails lput newtrail breadcrumb-trails
+            ]
+        ]
+        if not ignore-obsticles [
+         if not trail-exists buildnum dest false [
+            let newtrail blaze-trail buildnum dest false
+            if length newtrail > 6 [
+              set breadcrumb-trails lput newtrail breadcrumb-trails
+            ]
+         ]
+        ]
+    ]  
+    
+
+end
+
+
 
 
 ;;
@@ -478,7 +524,6 @@ end
 to check-goal
   ;; did we reach the destination?  return to home!
   if building-number = destination-building  [
-  show (word "current building: " building-number " goal: " destination-building " group: " groupid)
     foreach worker-groups [
       group ->
        let from item IWG-FROM group
@@ -486,7 +531,6 @@ to check-goal
       
       ;; the right row has the same group and starts from the building we are at now.
       if groupid = rowgroupid and building-number = from [
-        show group
           let newdest item IWG-TO group 
          let add-lap  0
           if newdest = home-building [ set add-lap  1]

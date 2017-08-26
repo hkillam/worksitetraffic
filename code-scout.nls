@@ -97,6 +97,9 @@ end
 ;;
 to create-breadcrumbs-from_buildinglist
   
+  set worker-groups csv:from-file "workers.csv" 
+  set worker-groups remove-item 0 worker-groups  ;; remove headers row
+  
     foreach building-list [
     bld ->
       let buildnum  item I-ID bld

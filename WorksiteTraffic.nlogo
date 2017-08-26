@@ -22,7 +22,7 @@ to setup ; linked with setup button on interface
   create-buildinglist
   make-buildings-from-list
   setup-scouts
-  create-breadcrumbs-from_buildinglist
+  create-breadcrumbs-from_workerlist
   set reset-counters total-ticks
 
   ;; diagnostic - show the breadcrumb trails for a moment.
@@ -226,10 +226,10 @@ NIL
 1
 
 BUTTON
-144
-17
-207
-50
+139
+67
+202
+100
 go
 go
 T
@@ -243,30 +243,30 @@ NIL
 0
 
 TEXTBOX
-17
-90
-167
-108
+13
+118
+163
+136
 Click a square to make more:
 11
 0.0
 1
 
 CHOOSER
-11
-105
-119
-150
+12
+135
+120
+180
 new-path-type
 new-path-type
 "mud" "path" "danger"
 0
 
 BUTTON
-118
-106
-197
-149
+121
+135
+200
+178
 Add Blocks
 add-blocks
 T
@@ -280,10 +280,10 @@ NIL
 1
 
 INPUTBOX
-78
-10
-146
-70
+14
+50
+82
+110
 total-ticks
 2000.0
 1
@@ -344,9 +344,9 @@ HORIZONTAL
 
 BUTTON
 11
-157
+181
 101
-190
+214
 Save The World
 SaveWorldBitmap
 NIL
@@ -419,10 +419,10 @@ show-crooked-paths
 -1000
 
 BUTTON
-13
-57
-108
-90
+107
+17
+202
+50
 Fresh Workers
 fresh-workers
 NIL
@@ -512,10 +512,10 @@ ignore-obsticles
 -1000
 
 INPUTBOX
-690
-405
-745
-465
+82
+49
+137
+109
 repeats
 2.0
 1

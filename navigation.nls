@@ -85,7 +85,6 @@ to-report path-clear [pt1 pt2 radius]
       show (word "allowed colors: " allowed-patches)
      ]  ;; show the line
     move-to pt1
-    if debug-mode = true [pen-up]
     face-nowrap pt2
     let dist distance  pt2
     if debug-mode = true [ show dist ]
@@ -178,8 +177,8 @@ to-report select-breadcrumbs [src dest bold ]
   
    foreach breadcrumb-trails  [ 
     row -> 
-      if src = item 0 row and dest = item 1 row and bold = item 2 row [ report ( list trailid false 4) ]
-      if src = item 1 row and dest = item 0 row and bold = item 2 row [ report ( list trailid true (length row - 1)) ]
+      if src = item 0 row and dest = item 1 row and bold = item 2 row [ report ( list trailid false 4)  show (word "Selected trail " trailid) ]
+      if src = item 1 row and dest = item 0 row and bold = item 2 row [ report ( list trailid true (length row - 1))  show (word "Selected reverse trail " trailid)]
       set trailid trailid + 1 
    ]
    report (list )
